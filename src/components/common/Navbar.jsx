@@ -11,7 +11,9 @@ import {
   Palette,
   ExternalLink,
   Sparkles,
-  KeyRound
+  KeyRound,
+  LogOut,
+  User
 } from 'lucide-react';
 
 export const Navbar = () => {
@@ -21,6 +23,8 @@ export const Navbar = () => {
     setActiveEmpresaId, 
     userRole, 
     setUserRole,
+    currentUser,
+    logoutUser,
     notificacoes,
     soundEnabled,
     setSoundEnabled,
@@ -33,8 +37,6 @@ export const Navbar = () => {
 
   const [showCompanyMenu, setShowCompanyMenu] = useState(false);
   const [showThemePicker, setShowThemePicker] = useState(false);
-  const [showMasterPrompt, setShowMasterPrompt] = useState(false);
-  const [masterPass, setMasterPass] = useState('');
 
   const unreadNotifs = notificacoes.filter(n => !n.lida).length;
   const totalAlertsCount = unreadNotifs;
@@ -132,7 +134,7 @@ export const Navbar = () => {
             title="Mudar Cor do Sistema"
           >
             <Palette className="w-5 h-5 text-sky-600" />
-            <span className="hidden sm:inline text-xs font-black">Cor do Sistema</span>
+            <span className="hidden sm:inline text-xs font-black">Cor</span>
           </button>
 
           {showThemePicker && (
@@ -186,24 +188,44 @@ export const Navbar = () => {
           )}
         </button>
 
-        {/* SECURE User Role Selector (SuperAdmin Option Hidden From End-Clients) */}
+        {/* LOGGED IN USER PILL & LOGOFF BUTTON */}
         <div className="flex items-center gap-2 border-l border-slate-200 pl-3">
-          <div className="relative flex items-center">
-            <ShieldCheck className="w-4 h-4 text-sky-600 absolute left-3 pointer-events-none" />
-            <select
-              value={userRole}
-              onChange={(e) => handleRoleChange(e.target.value)}
-              className="pl-9 pr-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-950 text-xs font-black outline-none border border-slate-300 cursor-pointer shadow-xs transition"
-            >
-              <option value="admin" className="bg-white text-slate-950 font-bold">Administrador (Empresa)</option>
-              <option value="funcionario" className="bg-white text-slate-950 font-bold">Profissional (Restrito)</option>
-              {userRole === 'superadmin' ? (
-                <option value="superadmin" className="bg-white text-amber-950 font-black">👑 SuperAdmin SaaS</option>
-              ) : (
-                <option value="superadmin_auth" className="bg-white text-amber-800 font-bold">🔑 Entrar como Master...</option>
-              )}
-            </select>
-          </div>
+          {currentUser ? (
+            <div className="flex items-center gap-2">
+              <div className="hidden md:flex flex-col text-right">
+                <span className="text-xs font-black text-slate-950 leading-tight">{currentUser.nome}</span>
+                <span className="text-[10px] font-extrabold text-sky-700 uppercase leading-tight">
+                  {currentUser.role === 'superadmin' ? '👑 Master' : '🏢 Dono'}
+                </span>
+              </div>
+
+              <button
+                onClick={logoutUser}
+                className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl font-extrabold text-xs border border-rose-200 transition flex items-center gap-1"
+                title="Sair da Conta (Logoff)"
+              >
+                <LogOut className="w-4 h-4 text-rose-600" />
+                <span className="hidden sm:inline">Sair</span>
+              </button>
+            </div>
+          ) : (
+            <div className="relative flex items-center">
+              <ShieldCheck className="w-4 h-4 text-sky-600 absolute left-3 pointer-events-none" />
+              <select
+                value={userRole}
+                onChange={(e) => handleRoleChange(e.target.value)}
+                className="pl-9 pr-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-950 text-xs font-black outline-none border border-slate-300 cursor-pointer shadow-xs transition"
+              >
+                <option value="admin" className="bg-white text-slate-950 font-bold">Administrador (Empresa)</option>
+                <option value="funcionario" className="bg-white text-slate-950 font-bold">Profissional (Restrito)</option>
+                {userRole === 'superadmin' ? (
+                  <option value="superadmin" className="bg-white text-amber-950 font-black">👑 SuperAdmin SaaS</option>
+                ) : (
+                  <option value="superadmin_auth" className="bg-white text-amber-800 font-bold">🔑 Entrar como Master...</option>
+                )}
+              </select>
+            </div>
+          )}
         </div>
       </div>
     </header>

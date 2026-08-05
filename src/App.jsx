@@ -12,6 +12,9 @@ import { LicenseExpiredLockModal } from './components/common/LicenseExpiredLockM
 import { NewAppointmentToastModal } from './components/common/NewAppointmentToastModal';
 import { PwaInstallModal } from './components/common/PwaInstallModal';
 
+// Auth Views
+import { LoginView } from './components/auth/LoginView';
+
 // Main Views
 import { DashboardView } from './components/dashboard/DashboardView';
 import { AgendaView } from './components/agenda/AgendaView';
@@ -35,7 +38,7 @@ import { SuperAdminView } from './components/superadmin/SuperAdminView';
 import { Menu, X, Sparkles } from 'lucide-react';
 
 export function App() {
-  const { currentView } = useApp();
+  const { currentView, currentUser } = useApp();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Standalone Public Routes:
@@ -47,6 +50,11 @@ export function App() {
   // 2. Buyer App Installation & Key Activation Page (LINK 1)
   if (currentView === 'instalacaoApp') {
     return <AppInstallView />;
+  }
+
+  // Mandatory Authentication: Require Login/Password for System Access
+  if (!currentUser) {
+    return <LoginView />;
   }
 
   const renderView = () => {

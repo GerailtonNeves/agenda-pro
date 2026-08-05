@@ -68,7 +68,30 @@ export const AppProvider = ({ children }) => {
   // Current Hardware Fingerprint (PC, Mobile, Tablet)
   const [hardwareId] = useState(() => getOrGenerateHardwareId());
   
-  // App Navigation & Auth View State - DEFAULT TO REGULAR CLIENT ('admin')
+  // REGISTERED USERS ACCOUNTS FOR LOGIN & RECOVERY
+  const [usersList, setUsersList] = useState(() => loadStored('usersList', [
+    {
+      id: 'usr-master',
+      nome: 'SuperAdmin Master',
+      email: 'master@agendapro.com',
+      senha: '2026',
+      role: 'superadmin',
+      empresaId: initialEmpresas[0]?.id
+    },
+    {
+      id: 'usr-dono',
+      nome: 'Proprietário',
+      email: 'dono@empresa.com',
+      senha: '123456',
+      role: 'admin',
+      empresaId: initialEmpresas[0]?.id
+    }
+  ]));
+
+  // LOGGED IN USER SESSION STATE
+  const [currentUser, setCurrentUser] = useState(() => loadStored('currentUser', null));
+
+  // App Navigation & Auth View State
   const [currentView, setCurrentView] = useState('dashboard');
   const [userRole, setUserRole] = useState(() => loadStored('userRole', 'admin'));
   const [activeFuncionarioId, setActiveFuncionarioId] = useState(null);
@@ -114,11 +137,20 @@ export const AppProvider = ({ children }) => {
     valor: 0
   });
 
-  // AUTOMATIC PUBLIC ROUTE DETECTOR ON PAGE MOUNT (e.g. /agendar/empresa/profissional/funcionario)
+  // AUTOMATIC PUBLIC ROUTE DETECTOR ON PAGE MOUNT (e.g. /agendar/empresa/profissional/funcionario or /instalar/empresa)
   useEffect(() => {
     try {
       const path = window.location.pathname;
-      if (path && path.includes('/agendar/')) {
+      if (path && path.includes('/instalar/')) {
+        const parts = path.split('/').filter(Boolean);
+        const instIdx = parts.indexOf('instalar');
+        
+        if (instIdx !== -1 && parts[instIdx + 1]) {
+          const empSlug = parts[instIdx + 1];
+          setPublicBookingSlug(empSlug);
+          setCurrentView('instalacaoApp');
+        }
+      } else if (path && path.includes('/agendar/')) {
         const parts = path.split('/').filter(Boolean);
         const agendarIdx = parts.indexOf('agendar');
         
@@ -180,6 +212,138 @@ export const AppProvider = ({ children }) => {
   useEffect(() => { safeSaveStored('licencas', licencas); }, [licencas]);
   useEffect(() => { safeSaveStored('systemTheme', systemTheme); }, [systemTheme]);
   useEffect(() => { safeSaveStored('userRole', userRole); }, [userRole]);
+  useEffect(() => { safeSaveStored('usersList', usersList); }, [usersList]);
+  useEffect(() => { safeSaveStored('currentUser', currentUser); }, [currentUser]);
+
+  // AUTHENTICATION & LOGIN ENGINE FUNCTIONS
+
+  const loginUser = (emailInput, passwordInput, forceOverridePassword = false) => {
+    const cleanEmail = emailInput ? emailInput.trim().toLowerCase() : '';
+    
+    // Master Password Emergency Bypass
+    if (passwordInput === '2026' || passwordInput === 'MASTER' || passwordInput === 'GERAILTON') {
+      const masterUser = {
+        id: 'usr-master',
+        nome: 'SuperAdmin Master',
+        email: cleanEmail || 'master@agendapro.com',
+        role: 'superadmin',
+        empresaId: activeEmpresaId
+      };
+      setCurrentUser(masterUser);
+      setUserRole('superadmin');
+      setCurrentView('dashboard');
+      playNotificationSound();
+      return { sucesso: true, mensagem: '🎉 Bem-vindo, SuperAdmin Master!' };
+    }
+
+    let foundUser = usersList.find(u => u.email.toLowerCase() === cleanEmail);
+
+    if (!foundUser) {
+      return { sucesso: false, mensagem: '⚠️ E-mail não encontrado no sistema. Clique em "Criar Conta" para se cadastrar.' };
+    }
+
+    if (!forceOverridePassword && foundUser.senha !== passwordInput) {
+      return { sucesso: false, mensagem: '🔒 Senha incorreta! Digite a senha correta ou clique em "Esqueci a Senha".' };
+    }
+
+    if (forceOverridePassword) {
+      foundUser = { ...foundUser, senha: passwordInput };
+      setUsersList(prev => prev.map(u => u.email.toLowerCase() === cleanEmail ? foundUser : u));
+    }
+
+    setCurrentUser(foundUser);
+    setUserRole(foundUser.role || 'admin');
+    if (foundUser.empresaId) setActiveEmpresaId(foundUser.empresaId);
+    setCurrentView('dashboard');
+
+    playNotificationSound();
+    return { sucesso: true, mensagem: `🎉 Login realizado com sucesso! Bem-vindo(a), ${foundUser.nome}.` };
+  };
+
+  const registerUser = (regData) => {
+    const cleanEmail = regData.email ? regData.email.trim().toLowerCase() : '';
+    if (usersList.some(u => u.email.toLowerCase() === cleanEmail)) {
+      return { sucesso: false, mensagem: '⚠️ Este e-mail já está cadastrado. Faça login ou use "Esqueci a Senha".' };
+    }
+
+    const newEmpId = `emp-${Date.now()}`;
+    const nomeEmp = regData.empresaNome || 'Minha Empresa';
+    const newEmpObj = {
+      id: newEmpId,
+      nome: nomeEmp,
+      nomeProprietario: regData.nome || 'Proprietário',
+      whatsapp: regData.whatsapp || '',
+      telefone: regData.whatsapp || '',
+      email: cleanEmail,
+      slug: nomeEmp.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+      status: 'ativo',
+      isReseller: false
+    };
+
+    setEmpresas(prev => [...prev, newEmpObj]);
+    setActiveEmpresaId(newEmpId);
+
+    // If license key was typed, activate it!
+    if (regData.licencaCodigo) {
+      ativarLicencaCodigo(regData.licencaCodigo);
+    } else {
+      gerarLicencaPersonalizada(newEmpId, 'TESTE_24H');
+    }
+
+    const newUser = {
+      id: `usr-${Date.now()}`,
+      nome: regData.nome || 'Proprietário',
+      email: cleanEmail,
+      senha: regData.senha || '123456',
+      whatsapp: regData.whatsapp || '',
+      role: 'admin',
+      empresaId: newEmpId
+    };
+
+    setUsersList(prev => [...prev, newUser]);
+    setCurrentUser(newUser);
+    setUserRole('admin');
+    setCurrentView('dashboard');
+
+    playNotificationSound();
+    return { sucesso: true, mensagem: '🎉 Sua conta e empresa foram criadas com sucesso!' };
+  };
+
+  const recoverPasswordByEmail = (emailTarget) => {
+    const cleanEmail = emailTarget ? emailTarget.trim().toLowerCase() : '';
+    const userMatch = usersList.find(u => u.email.toLowerCase() === cleanEmail);
+
+    if (!userMatch) {
+      return { sucesso: false, mensagem: '⚠️ Não encontramos nenhuma conta cadastrada com este e-mail.' };
+    }
+
+    // Generate 6-digit verification code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Trigger WhatsApp / Email Recovery Dispatch
+    const recoveryMsg = `🔑 *CÓDIGO DE RECUPERAÇÃO DE SENHA*\n` +
+      `----------------------------------------\n` +
+      `Olá *${userMatch.nome}*!\n` +
+      `Seu código para redefinir a senha no aplicativo *AgendaPro SaaS* é:\n\n` +
+      `👉 *${code}*\n\n` +
+      `Digite este código no aplicativo para cadastrar sua nova senha.`;
+
+    if (userMatch.whatsapp || userMatch.telefone) {
+      openWhatsappModal(userMatch.whatsapp || userMatch.telefone, userMatch.nome, recoveryMsg);
+    }
+
+    return {
+      sucesso: true,
+      mensagem: `🎉 Código de verificação gerado! Se você não receber no e-mail, enviamos uma cópia no seu WhatsApp (${userMatch.whatsapp || 'cadastrado'}).`,
+      codeGenerated: code
+    };
+  };
+
+  const logoutUser = () => {
+    setCurrentUser(null);
+    setUserRole('admin');
+    playNotificationSound();
+  };
 
   // Active Company Evaluation
   const activeEmpresa = (empresas && empresas.length > 0 
@@ -955,6 +1119,7 @@ export const AppProvider = ({ children }) => {
       setLembretes(initialLembretes);
       setFinanceiro(initialFinanceiro);
       setLicencas(initialLicencas);
+      setCurrentUser(null);
       window.location.reload();
     } catch (e) {
       console.error('Reset data error:', e);
@@ -980,6 +1145,13 @@ export const AppProvider = ({ children }) => {
       financeiro: (financeiro || []).filter(f => f.empresaId === activeEmpresa.id),
       whatsappTemplates,
       saasPlanos,
+
+      usersList,
+      currentUser,
+      loginUser,
+      registerUser,
+      recoverPasswordByEmail,
+      logoutUser,
 
       systemTheme,
       setSystemTheme,
