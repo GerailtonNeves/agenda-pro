@@ -20,7 +20,8 @@ import {
   DollarSign, 
   ExternalLink,
   X,
-  CalendarCheck
+  CalendarCheck,
+  Camera
 } from 'lucide-react';
 
 export const FuncionariosView = () => {
@@ -31,7 +32,8 @@ export const FuncionariosView = () => {
     activeEmpresa, 
     agendamentos,
     openWhatsappModal,
-    openPublicBookingPage
+    openPublicBookingPage,
+    openImageUploader
   } = useApp();
 
   const [activeTab, setActiveTab] = useState('cards');
@@ -82,7 +84,7 @@ export const FuncionariosView = () => {
     setNome(func.nome);
     setCargo(func.cargo);
     setComissaoPct(func.comissaoPct !== undefined ? func.comissaoPct : '');
-    setFoto(func.foto);
+    setFoto(func.foto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400');
     setTelefone(func.telefone || '');
     setEmail(func.email || '');
     setEspecialidades(Array.isArray(func.especialidades) ? func.especialidades.join(', ') : func.especialidades || '');
@@ -184,7 +186,7 @@ export const FuncionariosView = () => {
             <CalendarCheck className="w-4 h-4 text-cyan-700" /> LINK 2 • AGENDAS DOS FUNCIONÁRIOS CADASTRADOS
           </span>
           <h2 className="text-2xl md:text-3xl font-black text-slate-950 flex items-center gap-2">
-            Cadastro de Equipe & Gerador do LINK 2 das Agendas ({funcionarios.length})
+            Cadastro de Equipe & Agendas ({funcionarios.length})
           </h2>
           <p className="text-sm text-slate-600 font-medium mt-1">
             Cadastre quantos funcionários precisar. Cada profissional tem o seu <b>LINK 2 exclusivo</b> para enviar aos clientes agendarem direto com ele!
@@ -400,6 +402,25 @@ export const FuncionariosView = () => {
             </div>
 
             <form onSubmit={handleSave} className="p-6 space-y-4 text-sm font-semibold text-slate-950">
+              {/* UPLOAD FOTO DO PROFISSIONAL */}
+              <div className="flex items-center gap-4 p-3.5 bg-slate-50 rounded-2xl border border-slate-200">
+                <img 
+                  src={foto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400'} 
+                  alt="Foto do Profissional" 
+                  className="w-16 h-16 rounded-2xl object-cover border-2 border-cyan-500 shadow-sm flex-shrink-0"
+                />
+                <div className="flex-1 space-y-1">
+                  <label className="block text-xs font-black uppercase text-slate-700">Foto do Profissional</label>
+                  <button
+                    type="button"
+                    onClick={() => openImageUploader('Fazer Upload de Foto do Profissional', foto, (newUrl) => setFoto(newUrl))}
+                    className="px-3.5 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-extrabold text-xs transition flex items-center gap-1.5 shadow-xs"
+                  >
+                    <Camera className="w-4 h-4 text-white" /> Fazer Upload / Alterar Foto
+                  </button>
+                </div>
+              </div>
+
               <div>
                 <label className="block font-extrabold text-slate-950 mb-1">Nome Completo do Profissional *</label>
                 <input
