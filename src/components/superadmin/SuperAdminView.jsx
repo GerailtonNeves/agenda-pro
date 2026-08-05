@@ -20,7 +20,11 @@ import {
   Clock,
   Phone,
   UserCheck,
-  ShieldAlert
+  ShieldAlert,
+  User,
+  Trash2,
+  ExternalLink,
+  MoveRight
 } from 'lucide-react';
 import { getLabelDuracao } from '../../services/licenseService';
 
@@ -29,16 +33,24 @@ export const SuperAdminView = () => {
     empresas, 
     licencas, 
     hardwareId, 
-    isResellerAuthorized,
     togglePermissaoRevendedor,
     gerarLicencaPersonalizada,
     desvincularDispositivoLicenca, 
     revogarLicenca,
     openWhatsappModal,
     resetAllDataToDefault,
-    restaurarLicencaMasterEmergencia
+    restaurarLicencaMasterEmergencia,
+    saveEmpresa
   } = useApp();
 
+  // Form State for Registering New Buyer Company
+  const [novoNomeEmpresa, setNovoNomeEmpresa] = useState('');
+  const [novoNomeResponsavel, setNovoNomeResponsavel] = useState('');
+  const [novoWhatsapp, setNovoWhatsapp] = useState('');
+  const [novaDuracao, setNovaDuracao] = useState('1_MES');
+  const [novoIsReseller, setNovoIsReseller] = useState(false);
+
+  // Selector for existing company key generation
   const [selectedEmpresaId, setSelectedEmpresaId] = useState(empresas[0]?.id || '');
   const [selectedDuracao, setSelectedDuracao] = useState('1_MES');
   const [clienteTelefone, setClienteTelefone] = useState('');
@@ -46,7 +58,39 @@ export const SuperAdminView = () => {
   const [copiedCode, setCopiedCode] = useState('');
   const [lastGeneratedKey, setLastGeneratedKey] = useState(null);
 
-  const handleGenerateKey = () => {
+  // Create New Buyer Company & Generate License
+  const handleCadastrarEmpresaEGerarLicenca = (e) => {
+    e.preventDefault();
+    if (!novoNomeEmpresa) return;
+
+    const newEmpId = `emp-${Date.now()}`;
+    const newEmpObj = {
+      id: newEmpId,
+      nome: novoNomeEmpresa,
+      nomeProprietario: novoNomeResponsavel || 'Proprietário',
+      whatsapp: novoWhatsapp || '',
+      telefone: novoWhatsapp || '',
+      slug: novoNomeEmpresa.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+      isReseller: novoIsReseller,
+      status: 'ativo',
+      segmento: 'Comercial'
+    };
+
+    // 1. Save Company Record
+    saveEmpresa(newEmpObj);
+
+    // 2. Generate License Key
+    const lic = gerarLicencaPersonalizada(newEmpId, novaDuracao, novoWhatsapp);
+    setLastGeneratedKey(lic);
+
+    // 3. Clear Form
+    setNovoNomeEmpresa('');
+    setNovoNomeResponsavel('');
+    setNovoWhatsapp('');
+    setNovoIsReseller(false);
+  };
+
+  const handleGenerateKeyExisting = () => {
     if (!selectedEmpresaId) return;
     const lic = gerarLicencaPersonalizada(selectedEmpresaId, selectedDuracao, clienteTelefone);
     setLastGeneratedKey(lic);
@@ -61,22 +105,26 @@ export const SuperAdminView = () => {
   const handleShareWhatsapp = (lic) => {
     const empObj = empresas.find(e => e.id === lic.empresaId);
     const labelDur = getLabelDuracao(lic.duracao || '1_MES');
-    const dateFormatted = new Date(lic.dataExpiracaoIso || lic.dataExpiracao).toLocaleString('pt-BR');
+    const dateAtivacao = lic.criadoEm ? new Date(lic.criadoEm).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR');
+    const dateExpiracao = new Date(lic.dataExpiracaoIso || lic.dataExpiracao).toLocaleString('pt-BR');
     
     const whatsappMsg = `🔑 *LICENÇA DO SISTEMA GERADA COM SUCESSO!*\n` +
       `----------------------------------------\n` +
-      `👤 *Cliente:* ${empObj ? empObj.nome : 'Cliente'}\n` +
-      `📌 *Tipo de Licença:* ${labelDur}\n` +
+      `🏢 *Empresa:* ${empObj ? empObj.nome : 'Empresa Cliente'}\n` +
+      `👤 *Responsável:* ${empObj?.nomeProprietario || empObj?.responsavel || 'Cliente'}\n` +
+      `📌 *Plano:* ${labelDur}\n` +
+      `📅 *Data de Ativação:* ${dateAtivacao}\n` +
+      `⏳ *Data de Expiração:* ${dateExpiracao}\n` +
+      `👑 *Acesso Master:* ${empObj?.isReseller ? 'SIM (Revendedor)' : 'NÃO (Cliente Comum)'}\n` +
       `🔑 *Chave de Ativação:* *${lic.codigoAtivacao}*\n` +
-      `📅 *Válido até:* ${dateFormatted}\n` +
       `----------------------------------------\n` +
-      `Abra o sistema no seu computador ou celular e digite sua Chave de Ativação nas Configurações para liberar o acesso instantâneo!`;
+      `Abra o sistema no seu computador ou celular e digite sua Chave de Ativação no campo de licenças para liberar o uso imediato!`;
 
     openWhatsappModal(clienteTelefone || empObj?.whatsapp || empObj?.telefone, empObj ? empObj.nome : 'Cliente', whatsappMsg);
   };
 
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="space-y-6 animate-fadeIn text-slate-950 pb-12">
       {/* Header Bar */}
       <div className="bg-gradient-to-r from-slate-900 via-sky-950 to-slate-900 p-6 rounded-3xl border border-sky-400/30 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -84,14 +132,14 @@ export const SuperAdminView = () => {
             <Crown className="w-4 h-4 text-slate-950" /> Painel Master SuperAdmin SaaS & Revenda
           </span>
           <h2 className="text-2xl md:text-3xl font-black text-white flex items-center gap-2.5">
-            Gerador Comercial de Licenças & Autorização de Revendedores
+            Cadastro de Clientes, Ativação de Licenças & Botão Master
           </h2>
           <p className="text-sm text-slate-300 font-medium mt-1">
-            Gere licenças por duração (5 min, 24h, 1 mês, 6 meses, 1 ano) e autorize clientes a revenderem seu sistema
+            Cadastre o nome do comprador, responsável, WhatsApp, defina o status Master e controle datas de ativação e expiração.
           </p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={restaurarLicencaMasterEmergencia}
             className="px-4 py-3 rounded-2xl bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 font-black text-xs border border-sky-500/40 transition flex items-center gap-1.5"
@@ -108,261 +156,341 @@ export const SuperAdminView = () => {
         </div>
       </div>
 
-      {/* Hardware Fingerprint Info Card */}
-      <div className="p-5 rounded-3xl bg-white border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-sky-100 text-sky-700 rounded-2xl border border-sky-300">
-            <Laptop className="w-6 h-6" />
-          </div>
+      {/* Form: Register New Buyer Company & Auto-Generate License */}
+      <div className="bg-white p-6 md:p-8 rounded-3xl border-2 border-sky-500/30 shadow-lg space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-200 pb-4">
           <div>
-            <span className="text-xs font-black uppercase text-slate-500 tracking-wider">Hardware Fingerprint do Dispositivo Master</span>
-            <p className="text-lg font-black font-mono text-slate-950">{hardwareId}</p>
+            <h3 className="text-xl font-black text-slate-950 flex items-center gap-2">
+              <Building2 className="w-6 h-6 text-sky-600" /> Cadastrar Nova Empresa / Comprador do Sistema
+            </h3>
+            <p className="text-xs text-slate-500 font-bold mt-0.5">
+              Informe os dados da empresa compradora para gerar a licença e enviar direto no WhatsApp do cliente!
+            </p>
           </div>
+          <span className="px-3 py-1 bg-sky-100 text-sky-900 rounded-full text-xs font-black uppercase">
+            Novo Cadastro
+          </span>
         </div>
-        <div className="text-right">
-          <span className="text-xs font-black text-slate-500 block uppercase">Telefone Suporte Comercial</span>
-          <span className="text-sm font-black text-emerald-600">(11) 9 8589-7774</span>
-        </div>
-      </div>
 
-      {/* Generator & Reseller Authorization Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Generate Multi-Duration Activation Key Form */}
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4 text-slate-950">
-          <h3 className="text-xl font-black text-slate-950 flex items-center gap-2">
-            <Key className="w-6 h-6 text-sky-600" /> Emitir Nova Licença de Acesso
-          </h3>
-          <p className="text-sm font-semibold text-slate-600">
-            Escolha o plano e gere a chave para envio instantâneo no WhatsApp do seu cliente.
-          </p>
+        <form onSubmit={handleCadastrarEmpresaEGerarLicenca} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
+          <div>
+            <label className="block text-xs font-black uppercase text-slate-700 mb-1 flex items-center gap-1">
+              <Building2 className="w-3.5 h-3.5 text-sky-600" /> Nome da Empresa *
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="Ex: Barbearia Luxo"
+              value={novoNomeEmpresa}
+              onChange={(e) => setNovoNomeEmpresa(e.target.value)}
+              className="w-full p-3.5 rounded-2xl border border-slate-300 text-slate-950 font-bold text-sm bg-slate-50 outline-none focus:ring-2 focus:ring-sky-500"
+            />
+          </div>
 
-          <div className="space-y-4 pt-2">
-            <div>
-              <label className="block text-xs font-black uppercase text-slate-700 mb-1">Empresa / Cliente *</label>
-              <select
-                value={selectedEmpresaId}
-                onChange={(e) => setSelectedEmpresaId(e.target.value)}
-                className="w-full p-3.5 rounded-2xl border border-slate-300 text-slate-950 font-bold text-base bg-slate-50 outline-none focus:ring-2 focus:ring-sky-500"
-              >
-                {empresas.map(emp => (
-                  <option key={emp.id} value={emp.id}>
-                    {emp.nome} ({emp.segmento}) {emp.isReseller ? '👑 Revendedor Autorizado' : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div>
+            <label className="block text-xs font-black uppercase text-slate-700 mb-1 flex items-center gap-1">
+              <User className="w-3.5 h-3.5 text-indigo-600" /> Responsável Pessoal *
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="Ex: João da Silva"
+              value={novoNomeResponsavel}
+              onChange={(e) => setNovoNomeResponsavel(e.target.value)}
+              className="w-full p-3.5 rounded-2xl border border-slate-300 text-slate-950 font-bold text-sm bg-slate-50 outline-none focus:ring-2 focus:ring-sky-500"
+            />
+          </div>
 
-            <div>
-              <label className="block text-xs font-black uppercase text-slate-700 mb-1">Duração da Licença *</label>
-              <select
-                value={selectedDuracao}
-                onChange={(e) => setSelectedDuracao(e.target.value)}
-                className="w-full p-3.5 rounded-2xl border border-slate-300 text-slate-950 font-bold text-base bg-slate-50 outline-none focus:ring-2 focus:ring-sky-500"
-              >
-                <option value="TESTE_5M">⏱️ Teste Grátis de 5 Minutos</option>
-                <option value="TESTE_24H">⏳ Teste de 24 Horas</option>
-                <option value="1_MES">🗓️ Plano 1 Mês (30 Dias)</option>
-                <option value="6_MESES">📅 Plano 6 Meses (180 Dias)</option>
-                <option value="1_ANO">👑 Plano 1 Ano (365 Dias)</option>
-              </select>
-            </div>
+          <div>
+            <label className="block text-xs font-black uppercase text-slate-700 mb-1 flex items-center gap-1">
+              <Phone className="w-3.5 h-3.5 text-emerald-600" /> WhatsApp (Envio Direto) *
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="(11) 98589-7774"
+              value={novoWhatsapp}
+              onChange={(e) => setNovoWhatsapp(e.target.value)}
+              className="w-full p-3.5 rounded-2xl border border-slate-300 text-slate-950 font-bold text-sm bg-slate-50 outline-none focus:ring-2 focus:ring-sky-500"
+            />
+          </div>
 
-            <div>
-              <label className="block text-xs font-black uppercase text-slate-700 mb-1">WhatsApp do Cliente (Opcional)</label>
-              <input
-                type="text"
-                placeholder="(11) 98589-7774"
-                value={clienteTelefone}
-                onChange={(e) => setClienteTelefone(e.target.value)}
-                className="w-full p-3.5 rounded-2xl border border-slate-300 text-slate-950 font-bold text-base bg-slate-50 outline-none focus:ring-2 focus:ring-sky-500"
-              />
-            </div>
+          <div>
+            <label className="block text-xs font-black uppercase text-slate-700 mb-1 flex items-center gap-1">
+              <Calendar className="w-3.5 h-3.5 text-amber-600" /> Duração da Licença *
+            </label>
+            <select
+              value={novaDuracao}
+              onChange={(e) => setNovaDuracao(e.target.value)}
+              className="w-full p-3.5 rounded-2xl border border-slate-300 text-slate-950 font-bold text-sm bg-slate-50 outline-none focus:ring-2 focus:ring-sky-500"
+            >
+              <option value="TESTE_5M">⏱️ Teste Grátis de 5 Minutos</option>
+              <option value="TESTE_24H">⏳ Teste de 24 Horas</option>
+              <option value="1_MES">🗓️ Plano 1 Mês (30 Dias)</option>
+              <option value="6_MESES">📅 Plano 6 Meses (180 Dias)</option>
+              <option value="1_ANO">👑 Plano 1 Ano (365 Dias)</option>
+            </select>
+          </div>
 
+          {/* Toggle Master Revendedor Status */}
+          <div className="md:col-span-2 lg:col-span-2 flex items-center gap-3 bg-slate-100 p-3.5 rounded-2xl border border-slate-200">
+            <input
+              type="checkbox"
+              id="toggleMasterNew"
+              checked={novoIsReseller}
+              onChange={(e) => setNovoIsReseller(e.target.checked)}
+              className="w-5 h-5 accent-amber-500 rounded cursor-pointer"
+            />
+            <label htmlFor="toggleMasterNew" className="text-xs font-black text-slate-900 cursor-pointer flex items-center gap-2">
+              <Crown className="w-4 h-4 text-amber-500" />
+              <span>Autorizar esta empresa como Master / Revendedor (Pode gerar licenças para terceiros)</span>
+            </label>
+          </div>
+
+          <div className="md:col-span-2 lg:col-span-2">
             <button
-              onClick={handleGenerateKey}
+              type="submit"
               className="w-full py-4 px-6 bg-gradient-to-r from-sky-600 via-cyan-600 to-emerald-500 hover:from-sky-700 hover:to-emerald-600 text-white font-black text-base rounded-2xl shadow-lg transition flex items-center justify-center gap-2 uppercase tracking-wider"
             >
-              <Plus className="w-5 h-5" /> Gerar Licença & Enviar no WhatsApp
+              <Plus className="w-5 h-5" /> Cadastrar Empresa & Gerar Licença no WhatsApp
             </button>
           </div>
-
-          {/* Generated Code Display Banner */}
-          {lastGeneratedKey && (
-            <div className="p-5 rounded-2xl bg-amber-50 border-2 border-amber-300 text-amber-950 space-y-3 animate-scaleUp">
-              <div className="flex justify-between items-center">
-                <span className="text-xs font-black uppercase tracking-wider text-amber-900">
-                  {getLabelDuracao(lastGeneratedKey.duracao)}
-                </span>
-                <span className="text-xs font-mono font-bold text-slate-600">
-                  Expira: {new Date(lastGeneratedKey.dataExpiracaoIso || lastGeneratedKey.dataExpiracao).toLocaleString('pt-BR')}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between bg-white p-3.5 rounded-xl border border-amber-300">
-                <span className="font-mono font-black text-2xl text-slate-950">{lastGeneratedKey.codigoAtivacao}</span>
-                
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => copyToClipboard(lastGeneratedKey.codigoAtivacao)}
-                    className="px-3.5 py-2 bg-amber-400 hover:bg-amber-500 text-slate-950 font-black text-xs rounded-xl transition flex items-center gap-1"
-                  >
-                    {copiedCode === lastGeneratedKey.codigoAtivacao ? <CheckCircle2 className="w-4 h-4 text-emerald-800" /> : <Copy className="w-4 h-4" />}
-                    {copiedCode === lastGeneratedKey.codigoAtivacao ? 'Copiado!' : 'Copiar'}
-                  </button>
-
-                  <button
-                    onClick={() => handleShareWhatsapp(lastGeneratedKey)}
-                    className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs rounded-xl transition flex items-center gap-1 shadow-sm"
-                  >
-                    <Share2 className="w-4 h-4" /> WhatsApp
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Reseller Authorization & White-Label Control Panel */}
-        <div className="bg-slate-900 text-white p-6 rounded-3xl border border-slate-800 shadow-xl space-y-4">
-          <h3 className="text-xl font-black text-white flex items-center gap-2">
-            <Crown className="w-6 h-6 text-amber-400" /> Autorização de Revendedores (White-Label)
-          </h3>
-          <p className="text-xs text-slate-300 font-semibold leading-relaxed">
-            Seus clientes finais <b className="text-rose-300">NÃO têm acesso</b> ao gerador de licenças. Autorize apenas parceiros comerciais que compraram o sistema para revender!
-          </p>
-
-          <div className="space-y-3 pt-2">
-            {empresas.map(emp => (
-              <div key={emp.id} className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-3">
-                <div>
-                  <h4 className="font-black text-sm text-white flex items-center gap-2">
-                    {emp.nome}
-                    {emp.isReseller ? (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-slate-950 uppercase">
-                        Revendedor Autorizado
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-slate-800 text-slate-400 uppercase">
-                        Cliente Final
-                      </span>
-                    )}
-                  </h4>
-                  <span className="text-xs text-slate-400 font-mono">{emp.segmento} • ID: {emp.id}</span>
-                </div>
-
-                <button
-                  onClick={() => togglePermissaoRevendedor(emp.id)}
-                  className={`px-4 py-2 rounded-xl text-xs font-black transition border ${
-                    emp.isReseller
-                      ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 hover:bg-rose-500/30'
-                      : 'bg-amber-400 hover:bg-amber-500 text-slate-950 border-amber-300'
-                  }`}
-                >
-                  {emp.isReseller ? '🚫 Revogar Permissão de Revenda' : '👑 Autorizar como Revendedor'}
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
+        </form>
       </div>
 
-      {/* Active Licenses Table */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 overflow-x-auto">
-        <h3 className="font-black text-xl text-slate-950 border-b border-slate-200 pb-4 mb-4 flex items-center justify-between">
-          <span>Licenças Geradas e Emitidas ({licencas.length})</span>
+      {/* Quick Generator for Existing Companies */}
+      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4 text-slate-950">
+        <h3 className="text-xl font-black text-slate-950 flex items-center gap-2">
+          <Key className="w-6 h-6 text-sky-600" /> Emitir Chave Adicional para Empresa Já Cadastrada
         </h3>
 
-        <table className="w-full text-left text-sm border-collapse">
-          <thead>
-            <tr className="border-b border-slate-200 text-slate-500 font-black uppercase text-xs">
-              <th className="py-3.5 px-4">Empresa / Cliente</th>
-              <th className="py-3.5 px-4">Duração</th>
-              <th className="py-3.5 px-4">Chave de Ativação</th>
-              <th className="py-3.5 px-4">Aparelho Vinculado</th>
-              <th className="py-3.5 px-4">Data / Hora Expiração</th>
-              <th className="py-3.5 px-4">Status</th>
-              <th className="py-3.5 px-4 text-right">Ações</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 text-slate-950 font-bold">
-            {licencas.map(lic => {
-              const isRevoked = lic.status === 'REVOGADO';
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-xs font-black uppercase text-slate-700 mb-1">Empresa Cadastrada *</label>
+            <select
+              value={selectedEmpresaId}
+              onChange={(e) => setSelectedEmpresaId(e.target.value)}
+              className="w-full p-3.5 rounded-2xl border border-slate-300 text-slate-950 font-bold text-sm bg-slate-50 outline-none focus:ring-2 focus:ring-sky-500"
+            >
+              {empresas.map(emp => (
+                <option key={emp.id} value={emp.id}>
+                  {emp.nome} ({emp.nomeProprietario || 'Proprietário'}) {emp.isReseller ? '👑 Revendedor' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
 
-              return (
-                <tr key={lic.id} className="hover:bg-slate-50 transition">
-                  <td className="py-4 px-4 font-black text-slate-950 text-base">
-                    {lic.empresaNome || 'Empresa Cliente'}
-                  </td>
+          <div>
+            <label className="block text-xs font-black uppercase text-slate-700 mb-1">Duração da Licença *</label>
+            <select
+              value={selectedDuracao}
+              onChange={(e) => setSelectedDuracao(e.target.value)}
+              className="w-full p-3.5 rounded-2xl border border-slate-300 text-slate-950 font-bold text-sm bg-slate-50 outline-none focus:ring-2 focus:ring-sky-500"
+            >
+              <option value="TESTE_5M">⏱️ Teste Grátis de 5 Minutos</option>
+              <option value="TESTE_24H">⏳ Teste de 24 Horas</option>
+              <option value="1_MES">🗓️ Plano 1 Mês (30 Dias)</option>
+              <option value="6_MESES">📅 Plano 6 Meses (180 Dias)</option>
+              <option value="1_ANO">👑 Plano 1 Ano (365 Dias)</option>
+            </select>
+          </div>
 
-                  <td className="py-4 px-4 font-black text-xs text-sky-900">
-                    {getLabelDuracao(lic.duracao || '1_MES')}
-                  </td>
+          <div>
+            <label className="block text-xs font-black uppercase text-slate-700 mb-1">WhatsApp de Envio</label>
+            <input
+              type="text"
+              placeholder="(11) 98589-7774"
+              value={clienteTelefone}
+              onChange={(e) => setClienteTelefone(e.target.value)}
+              className="w-full p-3.5 rounded-2xl border border-slate-300 text-slate-950 font-bold text-sm bg-slate-50 outline-none focus:ring-2 focus:ring-sky-500"
+            />
+          </div>
+        </div>
 
-                  <td className="py-4 px-4 font-mono text-sm font-black text-slate-900">
-                    {lic.codigoAtivacao || <span className="text-slate-400 font-sans text-xs italic">Via Login</span>}
-                  </td>
+        <button
+          onClick={handleGenerateKeyExisting}
+          className="w-full py-3.5 px-6 bg-slate-900 hover:bg-slate-800 text-white font-black text-sm rounded-2xl shadow-md transition flex items-center justify-center gap-2 uppercase tracking-wider"
+        >
+          <Share2 className="w-5 h-5 text-emerald-400" /> Emitir Chave & Enviar no WhatsApp
+        </button>
 
-                  <td className="py-4 px-4 font-mono text-xs font-bold text-slate-800">
-                    {lic.dispositivoVinculadoId ? (
-                      <span className="px-2.5 py-1 bg-slate-100 text-slate-950 border border-slate-300 rounded-lg">
-                        📱 {lic.dispositivoVinculadoId}
-                      </span>
-                    ) : (
-                      <span className="text-emerald-600 font-sans text-xs">Aguardando vínculo</span>
-                    )}
-                  </td>
+        {/* Generated Key Result Banner */}
+        {lastGeneratedKey && (
+          <div className="p-5 rounded-2xl bg-amber-50 border-2 border-amber-300 text-amber-950 space-y-3 animate-scaleUp">
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-black uppercase tracking-wider text-amber-900">
+                {getLabelDuracao(lastGeneratedKey.duracao)}
+              </span>
+              <span className="text-xs font-mono font-bold text-slate-600">
+                Expira: {new Date(lastGeneratedKey.dataExpiracaoIso || lastGeneratedKey.dataExpiracao).toLocaleString('pt-BR')}
+              </span>
+            </div>
 
-                  <td className="py-4 px-4 font-mono font-black text-xs text-slate-900">
-                    {new Date(lic.dataExpiracaoIso || lic.dataExpiracao).toLocaleString('pt-BR')}
-                  </td>
+            <div className="flex flex-col sm:flex-row items-center justify-between bg-white p-3.5 rounded-xl border border-amber-300 gap-3">
+              <span className="font-mono font-black text-xl md:text-2xl text-slate-950">{lastGeneratedKey.codigoAtivacao}</span>
+              
+              <div className="flex gap-2 w-full sm:w-auto">
+                <button
+                  onClick={() => copyToClipboard(lastGeneratedKey.codigoAtivacao)}
+                  className="flex-1 sm:flex-initial px-3.5 py-2 bg-amber-400 hover:bg-amber-500 text-slate-950 font-black text-xs rounded-xl transition flex items-center justify-center gap-1"
+                >
+                  {copiedCode === lastGeneratedKey.codigoAtivacao ? <CheckCircle2 className="w-4 h-4 text-emerald-800" /> : <Copy className="w-4 h-4" />}
+                  {copiedCode === lastGeneratedKey.codigoAtivacao ? 'Copiado!' : 'Copiar'}
+                </button>
 
-                  <td className="py-4 px-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-black border ${
-                      isRevoked
-                        ? 'bg-rose-100 text-rose-900 border-rose-300'
-                        : 'bg-emerald-100 text-emerald-900 border-emerald-300'
-                    }`}>
-                      {lic.status}
-                    </span>
-                  </td>
+                <button
+                  onClick={() => handleShareWhatsapp(lastGeneratedKey)}
+                  className="flex-1 sm:flex-initial px-3.5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs rounded-xl transition flex items-center justify-center gap-1 shadow-sm"
+                >
+                  <Share2 className="w-4 h-4" /> WhatsApp
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
-                  <td className="py-4 px-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => handleShareWhatsapp(lic)}
-                        className="p-2 rounded-xl bg-emerald-100 hover:bg-emerald-200 text-emerald-950 border border-emerald-300 transition"
-                        title="Reenviar pelo WhatsApp"
-                      >
-                        <Share2 className="w-4 h-4 text-emerald-700" />
-                      </button>
+      {/* Registered Companies & Licenses Table (Fully Horizontal Drag/Scrollable on Mobile) */}
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-4">
+          <h3 className="font-black text-xl text-slate-950 flex items-center gap-2">
+            <Building2 className="w-6 h-6 text-sky-600" /> Cadastro Geral de Empresas, Status Master & Validade ({empresas.length})
+          </h3>
 
-                      {lic.dispositivoVinculadoId && (
+          {/* Mobile Horizontal Scroll Indicator Prompt */}
+          <span className="md:hidden text-xs font-black text-sky-700 bg-sky-50 px-3 py-1.5 rounded-xl border border-sky-200 flex items-center gap-1 animate-pulse">
+            <MoveRight className="w-4 h-4" /> Arraste a tabela para os lados para ver tudo no celular
+          </span>
+        </div>
+
+        {/* FULL MOBILE HORIZONTAL SCROLL WRAPPER */}
+        <div className="w-full overflow-x-auto min-w-full touch-pan-x scrollbar-thin pb-4">
+          <table className="w-full text-left text-sm border-collapse min-w-[900px]">
+            <thead>
+              <tr className="border-b border-slate-200 text-slate-500 font-black uppercase text-xs bg-slate-50">
+                <th className="py-3.5 px-4 rounded-l-xl">Empresa & Responsável</th>
+                <th className="py-3.5 px-4">WhatsApp</th>
+                <th className="py-3.5 px-4">Status Master</th>
+                <th className="py-3.5 px-4">Chave de Ativação</th>
+                <th className="py-3.5 px-4">Data de Ativação</th>
+                <th className="py-3.5 px-4">Data de Expiração</th>
+                <th className="py-3.5 px-4">Status Licença</th>
+                <th className="py-3.5 px-4 text-right rounded-r-xl">Ações Master</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-slate-950 font-bold">
+              {empresas.map(emp => {
+                const licObj = licencas.find(l => l.empresaId === emp.id) || {
+                  codigoAtivacao: 'AGY-24H-AUT1-0001',
+                  duracao: 'TESTE_24H',
+                  status: 'ATIVO',
+                  criadoEm: new Date().toISOString(),
+                  dataExpiracaoIso: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+                };
+
+                const isRevoked = licObj.status === 'REVOGADO';
+                const dateAtiv = licObj.criadoEm ? new Date(licObj.criadoEm).toLocaleString('pt-BR') : 'Hoje';
+                const dateExp = new Date(licObj.dataExpiracaoIso || licObj.dataExpiracao).toLocaleString('pt-BR');
+
+                return (
+                  <tr key={emp.id} className="hover:bg-slate-50 transition">
+                    {/* Empresa & Responsavel */}
+                    <td className="py-4 px-4">
+                      <div className="font-black text-slate-950 text-base">{emp.nome}</div>
+                      <div className="text-xs text-slate-500 font-bold flex items-center gap-1">
+                        <User className="w-3.5 h-3.5 text-sky-600" /> {emp.nomeProprietario || emp.responsavel || 'Proprietário'}
+                      </div>
+                    </td>
+
+                    {/* WhatsApp */}
+                    <td className="py-4 px-4 font-mono text-xs text-slate-800 whitespace-nowrap">
+                      {emp.whatsapp || emp.telefone ? (
                         <button
-                          onClick={() => desvincularDispositivoLicenca(lic.id)}
-                          className="px-3.5 py-2 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-950 font-black text-xs transition border border-amber-300"
-                          title="Desvincular Hardware ID do cliente"
+                          onClick={() => handleShareWhatsapp(licObj)}
+                          className="px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-950 rounded-xl font-bold border border-emerald-300 flex items-center gap-1 transition"
                         >
-                          🔓 Desvincular
+                          <Phone className="w-3.5 h-3.5 text-emerald-700" /> {emp.whatsapp || emp.telefone}
                         </button>
+                      ) : (
+                        <span className="text-slate-400 font-sans italic">Não informado</span>
                       )}
+                    </td>
 
+                    {/* Toggle Master Status Button */}
+                    <td className="py-4 px-4 whitespace-nowrap">
                       <button
-                        onClick={() => revogarLicenca(lic.id)}
-                        className={`px-3.5 py-2 rounded-xl font-black text-xs transition border ${
-                          isRevoked
-                            ? 'bg-emerald-100 text-emerald-950 border-emerald-300 hover:bg-emerald-200'
-                            : 'bg-rose-100 text-rose-950 border-rose-300 hover:bg-rose-200'
+                        onClick={() => togglePermissaoRevendedor(emp.id)}
+                        className={`px-3.5 py-2 rounded-xl text-xs font-black transition border shadow-xs flex items-center gap-1.5 ${
+                          emp.isReseller
+                            ? 'bg-amber-400 hover:bg-amber-500 text-slate-950 border-amber-300'
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
                         }`}
+                        title="Clique para alternar permissão Master / Revendedor"
                       >
-                        {isRevoked ? 'Reativar' : '🚫 Revogar'}
+                        <Crown className={`w-4 h-4 ${emp.isReseller ? 'text-slate-950' : 'text-slate-400'}`} />
+                        <span>{emp.isReseller ? '👑 Master Revendedor' : '🏢 Cliente Comum'}</span>
                       </button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                    </td>
+
+                    {/* Chave de Ativacao */}
+                    <td className="py-4 px-4 font-mono text-xs font-black text-slate-900 whitespace-nowrap">
+                      <span className="bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-300">
+                        {licObj.codigoAtivacao}
+                      </span>
+                    </td>
+
+                    {/* Data de Ativação */}
+                    <td className="py-4 px-4 font-mono text-xs font-bold text-slate-700 whitespace-nowrap">
+                      {dateAtiv}
+                    </td>
+
+                    {/* Data de Expiração */}
+                    <td className="py-4 px-4 font-mono text-xs font-black text-slate-900 whitespace-nowrap">
+                      <span className="bg-amber-100 text-amber-950 px-2.5 py-1 rounded-lg border border-amber-300">
+                        ⏳ {dateExp}
+                      </span>
+                    </td>
+
+                    {/* Status Licenca */}
+                    <td className="py-4 px-4 whitespace-nowrap">
+                      <span className={`px-3 py-1 rounded-full text-xs font-black border ${
+                        isRevoked
+                          ? 'bg-rose-100 text-rose-900 border-rose-300'
+                          : 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                      }`}>
+                        {licObj.status || 'ATIVO'}
+                      </span>
+                    </td>
+
+                    {/* Ações */}
+                    <td className="py-4 px-4 text-right whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => handleShareWhatsapp(licObj)}
+                          className="p-2 rounded-xl bg-emerald-100 hover:bg-emerald-200 text-emerald-950 border border-emerald-300 transition"
+                          title="Reenviar pelo WhatsApp"
+                        >
+                          <Share2 className="w-4 h-4 text-emerald-700" />
+                        </button>
+
+                        <button
+                          onClick={() => revogarLicenca(licObj.id)}
+                          className={`px-3.5 py-2 rounded-xl font-black text-xs transition border ${
+                            isRevoked
+                              ? 'bg-emerald-100 text-emerald-950 border-emerald-300 hover:bg-emerald-200'
+                              : 'bg-rose-100 text-rose-950 border-rose-300 hover:bg-rose-200'
+                          }`}
+                        >
+                          {isRevoked ? 'Reativar' : '🚫 Revogar'}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
