@@ -40,7 +40,6 @@ export const SuperAdminView = () => {
     togglePermissaoRevendedor,
     gerarLicencaPersonalizada,
     extenderLicencaDias,
-    deleteLicenca,
     deleteEmpresa,
     desvincularDispositivoLicenca, 
     revogarLicenca,
@@ -56,81 +55,47 @@ export const SuperAdminView = () => {
   // Edit Buyer Company Modal
   const [editingEmpresa, setEditingEmpresa] = useState(null);
 
-  // Form State for Registering New Buyer Company
-  const [novoNomeEmpresa, setNovoNomeEmpresa] = useState('');
-  const [novoNomeResponsavel, setNovoNomeResponsavel] = useState('');
-  const [novoWhatsapp, setNovoWhatsapp] = useState('');
-  const [novaDuracao, setNovaDuracao] = useState('1_MES');
-  const [novoIsReseller, setNovoIsReseller] = useState(false);
+  // Unified Form State for Registering Buyer Company & Issuing License
+  const [nomeEmpresa, setNomeEmpresa] = useState('');
+  const [nomeResponsavel, setNomeResponsavel] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
+  const [duracaoLicenca, setDuracaoLicenca] = useState('1_MES');
+  const [isReseller, setIsReseller] = useState(false);
 
-  // Selector / Editable State for Direct Key Emission
-  const [customEmpresaNome, setCustomEmpresaNome] = useState('');
-  const [selectedEmpresaId, setSelectedEmpresaId] = useState(empresas[0]?.id || '');
-  const [selectedDuracao, setSelectedDuracao] = useState('1_MES');
-  const [clienteTelefone, setClienteTelefone] = useState('');
-  const [isMasterDirect, setIsMasterDirect] = useState(false);
-  
   const [copiedCode, setCopiedCode] = useState('');
   const [lastGeneratedKey, setLastGeneratedKey] = useState(null);
 
-  // Create New Buyer Company & Generate License
+  // Single Action: Register Buyer Company & Generate License
   const handleCadastrarEmpresaEGerarLicenca = (e) => {
     e.preventDefault();
-    if (!novoNomeEmpresa) return;
+    if (!nomeEmpresa) return;
 
     const newEmpId = `emp-${Date.now()}`;
     const newEmpObj = {
       id: newEmpId,
-      nome: novoNomeEmpresa,
-      nomeProprietario: novoNomeResponsavel || 'Proprietário',
-      whatsapp: novoWhatsapp || '',
-      telefone: novoWhatsapp || '',
-      slug: novoNomeEmpresa.toLowerCase().replace(/[^a-z0-9]/g, '-'),
-      isReseller: novoIsReseller,
+      nome: nomeEmpresa.trim(),
+      nomeProprietario: nomeResponsavel.trim() || 'Proprietário',
+      responsavel: nomeResponsavel.trim() || 'Proprietário',
+      whatsapp: whatsapp.trim() || '',
+      telefone: whatsapp.trim() || '',
+      slug: nomeEmpresa.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+      isReseller: isReseller,
       status: 'ativo',
       segmento: 'Comercial'
     };
 
+    // 1. Save Buyer Company
     saveEmpresa(newEmpObj);
-    const lic = gerarLicencaPersonalizada(newEmpId, novaDuracao, novoWhatsapp);
+
+    // 2. Generate License Key
+    const lic = gerarLicencaPersonalizada(newEmpId, duracaoLicenca, whatsapp);
     setLastGeneratedKey(lic);
 
-    setNovoNomeEmpresa('');
-    setNovoNomeResponsavel('');
-    setNovoWhatsapp('');
-    setNovoIsReseller(false);
-  };
-
-  // Direct Key Generation with Editable Company Name (Fulano, Gilson, Hugo, etc.)
-  const handleGenerateKeyDirect = () => {
-    const finalName = customEmpresaNome ? customEmpresaNome.trim() : '';
-    let targetEmpId = selectedEmpresaId;
-
-    if (finalName) {
-      const existing = empresas.find(e => e.nome.toLowerCase() === finalName.toLowerCase());
-      if (existing) {
-        targetEmpId = existing.id;
-      } else {
-        const newId = `emp-${Date.now()}`;
-        const newEmpObj = {
-          id: newId,
-          nome: finalName,
-          nomeProprietario: finalName,
-          whatsapp: clienteTelefone || '',
-          telefone: clienteTelefone || '',
-          slug: finalName.toLowerCase().replace(/[^a-z0-9]/g, '-'),
-          isReseller: isMasterDirect,
-          status: 'ativo',
-          segmento: 'Comercial'
-        };
-        saveEmpresa(newEmpObj);
-        targetEmpId = newId;
-      }
-    }
-
-    if (!targetEmpId) return;
-    const lic = gerarLicencaPersonalizada(targetEmpId, selectedDuracao, clienteTelefone);
-    setLastGeneratedKey(lic);
+    // 3. Reset Inputs
+    setNomeEmpresa('');
+    setNomeResponsavel('');
+    setWhatsapp('');
+    setIsReseller(false);
   };
 
   const handleSaveEditEmpresa = (e) => {
@@ -154,8 +119,8 @@ export const SuperAdminView = () => {
     
     const whatsappMsg = `🔑 *LICENÇA DO SISTEMA GERADA COM SUCESSO!*\n` +
       `----------------------------------------\n` +
-      `🏢 *Empresa:* ${empObj ? empObj.nome : 'Empresa Cliente'}\n` +
-      `👤 *Responsável:* ${empObj?.nomeProprietario || empObj?.responsavel || 'Cliente'}\n` +
+      `🏢 *Empresa:* ${empObj ? empObj.nome : (lic.empresaNome || 'Empresa Cliente')}\n` +
+      `👤 *Responsável:* ${empObj?.nomeProprietario || empObj?.responsavel || lic.nomeProprietario || 'Cliente'}\n` +
       `📌 *Plano:* ${labelDur}\n` +
       `📅 *Data de Ativação:* ${dateAtivacao}\n` +
       `⏳ *Data de Expiração:* ${dateExpiracao}\n` +
@@ -167,7 +132,7 @@ export const SuperAdminView = () => {
     openWhatsappModal(lic.whatsapp || empObj?.whatsapp || empObj?.telefone, empObj ? empObj.nome : 'Cliente', whatsappMsg);
   };
 
-  // Filtered List
+  // Filtered Buyer Companies
   const filteredEmpresas = empresas.filter(emp => {
     const term = searchTerm.toLowerCase();
     const nomeComp = (emp.nome || '').toLowerCase();
@@ -182,13 +147,13 @@ export const SuperAdminView = () => {
       <div className="bg-gradient-to-r from-slate-900 via-sky-950 to-slate-900 p-6 rounded-3xl border border-sky-400/30 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <span className="px-3.5 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-amber-400 text-slate-950 flex items-center gap-1.5 w-fit mb-2">
-            <Crown className="w-4 h-4 text-slate-950" /> Painel Master SuperAdmin SaaS & Gestão de Licenças
+            <Crown className="w-4 h-4 text-slate-950" /> Painel Master SuperAdmin SaaS
           </span>
           <h2 className="text-2xl md:text-3xl font-black text-white flex items-center gap-2.5">
-            Central de Dados dos Compradores & Chaves Emitidas
+            Cadastro Completo de Clientes Compradores & Gestão de Validades
           </h2>
           <p className="text-sm text-slate-300 font-medium mt-1">
-            Veja, edite, estenda planos e gerencie todos os dados dos clientes para quem você gerou a chave de licença!
+            Cadastre a empresa compradora, responsável pessoal, WhatsApp e duração para incluir instantaneamente na tabela geral do sistema!
           </p>
         </div>
 
@@ -209,128 +174,117 @@ export const SuperAdminView = () => {
         </div>
       </div>
 
-      {/* Main Card: Direct Editable License Generator (As Requested in Photo) */}
+      {/* UNIFIED SINGLE FORM CARD: CADASTRO COMPLETO DE CLIENTE COMPRADOR */}
       <div className="bg-white p-6 md:p-8 rounded-3xl border-2 border-sky-500/40 shadow-xl space-y-4 text-slate-950">
         <div className="flex items-center justify-between border-b border-slate-200 pb-4">
           <div>
             <h3 className="text-xl md:text-2xl font-black text-slate-950 flex items-center gap-2">
-              <Key className="w-7 h-7 text-sky-600" /> Emitir Nova Licença de Acesso
+              <Building2 className="w-7 h-7 text-sky-600" /> Cadastro Completo de Cliente Comprador
             </h3>
             <p className="text-xs text-slate-600 font-bold mt-1">
-              Digite o nome de qualquer empresa que comprou o seu sistema (ex: Empresa do Fulano, Gilson, Hugo) e o WhatsApp para gerar a chave!
+              Cadastre nome da empresa, responsável pessoal e telefone para controle completo de clientes no sistema.
             </p>
           </div>
-          <span className="px-3 py-1 bg-amber-400 text-slate-950 rounded-full text-xs font-black uppercase">
-            Campo Editável
+          <span className="px-3 py-1 bg-sky-100 text-sky-900 rounded-full text-xs font-black uppercase">
+            Novo Cadastro
           </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-          {/* EDITABLE EMPRESA / CLIENTE INPUT FIELD */}
-          <div className="space-y-1">
-            <label className="block text-xs font-black uppercase text-slate-900 flex items-center justify-between">
-              <span className="flex items-center gap-1">
-                <Edit3 className="w-4 h-4 text-sky-600" /> EMPRESA / CLIENTE *
-              </span>
-              <span className="text-[10px] text-sky-700 font-extrabold">DIGITE QUALQUER NOME</span>
-            </label>
-            
+        <form onSubmit={handleCadastrarEmpresaEGerarLicenca} className="space-y-4 pt-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* NOME DA EMPRESA */}
+            <div>
+              <label className="block text-xs font-black uppercase text-slate-900 mb-1 flex items-center gap-1">
+                <Building2 className="w-4 h-4 text-sky-600" /> NOME DA EMPRESA *
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="Ex: Barbearia do Fulano, Salão Luxo..."
+                value={nomeEmpresa}
+                onChange={(e) => setNomeEmpresa(e.target.value)}
+                className="w-full p-3.5 rounded-2xl border-2 border-sky-300 text-slate-950 font-black text-sm bg-sky-50/40 outline-none focus:ring-2 focus:ring-sky-500 placeholder:text-slate-400"
+              />
+            </div>
+
+            {/* RESPONSÁVEL PESSOAL */}
+            <div>
+              <label className="block text-xs font-black uppercase text-slate-900 mb-1 flex items-center gap-1">
+                <User className="w-4 h-4 text-indigo-600" /> RESPONSÁVEL PESSOAL *
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="Ex: Gilson, Hugo, Fulano..."
+                value={nomeResponsavel}
+                onChange={(e) => setNomeResponsavel(e.target.value)}
+                className="w-full p-3.5 rounded-2xl border-2 border-slate-300 text-slate-950 font-black text-sm bg-slate-50 outline-none focus:ring-2 focus:ring-sky-500 placeholder:text-slate-400"
+              />
+            </div>
+
+            {/* WHATSAPP */}
+            <div>
+              <label className="block text-xs font-black uppercase text-slate-900 mb-1 flex items-center gap-1">
+                <Phone className="w-4 h-4 text-emerald-600" /> TELEFONE WHATSAPP *
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="(11) 98589-7774"
+                value={whatsapp}
+                onChange={(e) => setWhatsapp(e.target.value)}
+                className="w-full p-3.5 rounded-2xl border-2 border-slate-300 text-slate-950 font-black text-sm bg-slate-50 outline-none focus:ring-2 focus:ring-sky-500 placeholder:text-slate-400"
+              />
+            </div>
+
+            {/* DURAÇÃO DA LICENÇA */}
+            <div>
+              <label className="block text-xs font-black uppercase text-slate-900 mb-1 flex items-center gap-1">
+                <Calendar className="w-4 h-4 text-amber-600" /> DURAÇÃO DA LICENÇA *
+              </label>
+              <select
+                value={duracaoLicenca}
+                onChange={(e) => setDuracaoLicenca(e.target.value)}
+                className="w-full p-3.5 rounded-2xl border-2 border-slate-300 text-slate-950 font-black text-sm bg-slate-50 outline-none focus:ring-2 focus:ring-sky-500"
+              >
+                <option value="TESTE_5M">⏱️ Teste Grátis de 5 Minutos</option>
+                <option value="TESTE_24H">⏳ Teste de 24 Horas</option>
+                <option value="1_MES">🗓️ Plano 1 Mês (30 Dias)</option>
+                <option value="6_MESES">📅 Plano 6 Meses (180 Dias)</option>
+                <option value="1_ANO">👑 Plano 1 Ano (365 Dias)</option>
+              </select>
+            </div>
+          </div>
+
+          {/* MASTER REVENDEDOR TOGGLE */}
+          <div className="flex items-center gap-3 bg-amber-50 p-3.5 rounded-2xl border border-amber-300">
             <input
-              type="text"
-              placeholder="Digite o nome (Ex: Empresa do Fulano, Gilson, Hugo...)"
-              value={customEmpresaNome}
-              onChange={(e) => setCustomEmpresaNome(e.target.value)}
-              className="w-full p-3.5 rounded-2xl border-2 border-sky-400 text-slate-950 font-black text-base bg-sky-50/50 outline-none focus:ring-2 focus:ring-sky-500 shadow-xs placeholder:text-slate-400"
+              type="checkbox"
+              id="toggleMasterUnified"
+              checked={isReseller}
+              onChange={(e) => setIsReseller(e.target.checked)}
+              className="w-5 h-5 accent-amber-500 rounded cursor-pointer"
             />
-
-            {/* Quick selector of existing companies below */}
-            {empresas.length > 0 && (
-              <div className="pt-1">
-                <span className="text-[10px] text-slate-500 font-bold block mb-1">Ou selecione uma empresa já cadastrada:</span>
-                <select
-                  value={selectedEmpresaId}
-                  onChange={(e) => {
-                    setSelectedEmpresaId(e.target.value);
-                    const emp = empresas.find(x => x.id === e.target.value);
-                    if (emp) {
-                      setCustomEmpresaNome(emp.nome);
-                      if (emp.whatsapp || emp.telefone) setClienteTelefone(emp.whatsapp || emp.telefone);
-                    }
-                  }}
-                  className="w-full p-2 rounded-xl border border-slate-300 text-slate-900 font-bold text-xs bg-slate-100 outline-none"
-                >
-                  <option value="">-- Selecionar da lista --</option>
-                  {empresas.map(emp => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.nome} ({emp.nomeProprietario || 'Proprietário'}) {emp.isReseller ? '👑 Master' : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-          </div>
-
-          {/* DURAÇÃO DA LICENÇA */}
-          <div className="space-y-1">
-            <label className="block text-xs font-black uppercase text-slate-900 flex items-center gap-1">
-              <Calendar className="w-4 h-4 text-amber-600" /> DURAÇÃO DA LICENÇA *
+            <label htmlFor="toggleMasterUnified" className="text-xs md:text-sm font-black text-slate-950 cursor-pointer flex items-center gap-2">
+              <Crown className="w-4 h-4 text-amber-600" />
+              <span>Autorizar esta empresa como Master / Revendedor (Permite gerar licenças para terceiros)</span>
             </label>
-            <select
-              value={selectedDuracao}
-              onChange={(e) => setSelectedDuracao(e.target.value)}
-              className="w-full p-3.5 rounded-2xl border-2 border-slate-300 text-slate-950 font-black text-base bg-slate-50 outline-none focus:ring-2 focus:ring-sky-500"
-            >
-              <option value="TESTE_5M">⏱️ Teste Grátis de 5 Minutos</option>
-              <option value="TESTE_24H">⏳ Teste de 24 Horas</option>
-              <option value="1_MES">🗓️ Plano 1 Mês (30 Dias)</option>
-              <option value="6_MESES">📅 Plano 6 Meses (180 Dias)</option>
-              <option value="1_ANO">👑 Plano 1 Ano (365 Dias)</option>
-            </select>
           </div>
 
-          {/* WHATSAPP DO CLIENTE */}
-          <div className="space-y-1">
-            <label className="block text-xs font-black uppercase text-slate-900 flex items-center gap-1">
-              <Phone className="w-4 h-4 text-emerald-600" /> WHATSAPP DO CLIENTE (OPCIONAL)
-            </label>
-            <input
-              type="text"
-              placeholder="(11) 98589-7774"
-              value={clienteTelefone}
-              onChange={(e) => setClienteTelefone(e.target.value)}
-              className="w-full p-3.5 rounded-2xl border-2 border-slate-300 text-slate-950 font-black text-base bg-slate-50 outline-none focus:ring-2 focus:ring-sky-500"
-            />
-          </div>
-        </div>
-
-        {/* Master Revendedor Toggle for this client */}
-        <div className="flex items-center gap-3 bg-amber-50 p-4 rounded-2xl border border-amber-300">
-          <input
-            type="checkbox"
-            id="toggleMasterDirect"
-            checked={isMasterDirect}
-            onChange={(e) => setIsMasterDirect(e.target.checked)}
-            className="w-5 h-5 accent-amber-500 rounded cursor-pointer"
-          />
-          <label htmlFor="toggleMasterDirect" className="text-xs md:text-sm font-black text-slate-950 cursor-pointer flex items-center gap-2">
-            <Crown className="w-5 h-5 text-amber-600" />
-            <span>Autorizar este comprador como Master / Revendedor (Permite gerar licenças para terceiros)</span>
-          </label>
-        </div>
-
-        <button
-          onClick={handleGenerateKeyDirect}
-          className="w-full py-4 px-6 bg-gradient-to-r from-sky-600 via-cyan-600 to-emerald-500 hover:from-sky-700 hover:to-emerald-600 text-white font-black text-base rounded-2xl shadow-lg transition flex items-center justify-center gap-2 uppercase tracking-wider"
-        >
-          <Share2 className="w-6 h-6 text-white" /> Emitir Licença & Enviar no WhatsApp
-        </button>
+          <button
+            type="submit"
+            className="w-full py-4 px-6 bg-gradient-to-r from-sky-600 via-cyan-600 to-emerald-500 hover:from-sky-700 hover:to-emerald-600 text-white font-black text-base rounded-2xl shadow-lg transition flex items-center justify-center gap-2 uppercase tracking-wider"
+          >
+            <Plus className="w-6 h-6 text-white" /> Cadastrar Empresa & Emitir Licença no WhatsApp
+          </button>
+        </form>
 
         {/* Generated Key Banner Result */}
         {lastGeneratedKey && (
           <div className="p-5 rounded-2xl bg-amber-50 border-2 border-amber-300 text-amber-950 space-y-3 animate-scaleUp">
             <div className="flex justify-between items-center">
               <span className="text-xs font-black uppercase tracking-wider text-amber-900">
-                {getLabelDuracao(lastGeneratedKey.duracao)}
+                🎉 Licença Emitida: {getLabelDuracao(lastGeneratedKey.duracao)}
               </span>
               <span className="text-xs font-mono font-bold text-slate-600">
                 Expira: {new Date(lastGeneratedKey.dataExpiracaoIso || lastGeneratedKey.dataExpiracao).toLocaleString('pt-BR')}
@@ -361,15 +315,15 @@ export const SuperAdminView = () => {
         )}
       </div>
 
-      {/* DEDICATED MANAGER CARD: DADOS DOS COMPRADORES E LICENÇAS EMITIDAS */}
+      {/* MASTER UNIFIED TABLE: CADASTRO GERAL DE EMPRESAS, STATUS MASTER & VALIDADES */}
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4">
           <div>
             <h3 className="font-black text-xl text-slate-950 flex items-center gap-2">
-              <UserCheck className="w-6 h-6 text-sky-600" /> Gerenciador de Compradores & Chaves de Licença ({empresas.length})
+              <Building2 className="w-6 h-6 text-sky-600" /> Cadastro Geral de Empresas, Status Master & Validades ({empresas.length})
             </h3>
             <p className="text-xs text-slate-500 font-bold mt-0.5">
-              Edite nomes, WhatsApp, altere status Master, estenda prazos de validade ou revogue chaves em 1-clique.
+              Todos os dados das empresas cadastradas aparecem aqui com datas de ativação, expiração e controles master.
             </p>
           </div>
 
@@ -377,7 +331,7 @@ export const SuperAdminView = () => {
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none" />
             <input
               type="text"
-              placeholder="Buscar comprador, empresa ou WhatsApp..."
+              placeholder="Buscar empresa, responsável ou WhatsApp..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-300 text-xs font-bold bg-slate-50 outline-none focus:ring-2 focus:ring-sky-500"
@@ -397,7 +351,7 @@ export const SuperAdminView = () => {
                 <th className="py-3.5 px-4">Data de Ativação</th>
                 <th className="py-3.5 px-4">Data de Expiração</th>
                 <th className="py-3.5 px-4">Status Licença</th>
-                <th className="py-3.5 px-4 text-right rounded-r-xl">Ações de Gerenciamento</th>
+                <th className="py-3.5 px-4 text-right rounded-r-xl">Ações Master</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-950 font-bold">
