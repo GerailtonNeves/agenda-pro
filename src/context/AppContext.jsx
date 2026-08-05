@@ -114,6 +114,32 @@ export const AppProvider = ({ children }) => {
     valor: 0
   });
 
+  // AUTOMATIC PUBLIC ROUTE DETECTOR ON PAGE MOUNT (e.g. /agendar/empresa/profissional/funcionario)
+  useEffect(() => {
+    try {
+      const path = window.location.pathname;
+      if (path && path.includes('/agendar/')) {
+        const parts = path.split('/').filter(Boolean);
+        const agendarIdx = parts.indexOf('agendar');
+        
+        if (agendarIdx !== -1 && parts[agendarIdx + 1]) {
+          const empSlug = parts[agendarIdx + 1];
+          let funcSlug = null;
+
+          if (parts[agendarIdx + 2] === 'profissional' && parts[agendarIdx + 3]) {
+            funcSlug = parts[agendarIdx + 3];
+          }
+
+          setPublicBookingSlug(empSlug);
+          setPublicEmployeeSlug(funcSlug);
+          setCurrentView('agendamentoPublico');
+        }
+      }
+    } catch (e) {
+      console.warn('URL route detection exception:', e);
+    }
+  }, []);
+
   // Warmup Web Audio Context on first user click to bypass browser audio autoplay policy
   useEffect(() => {
     const handleUserGesture = () => {
