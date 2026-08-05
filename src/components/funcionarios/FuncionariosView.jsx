@@ -3,87 +3,71 @@ import { useApp } from '../../context/AppContext';
 import { 
   UserCheck, 
   Plus, 
-  Camera, 
-  ExternalLink, 
-  Copy, 
-  Check, 
-  Percent, 
-  DollarSign, 
-  Calendar, 
-  Star, 
+  Search, 
   Edit3, 
   Trash2, 
-  X, 
-  Clock,
-  TrendingUp,
-  Award,
-  Share2,
-  QrCode,
-  MessageSquare
+  Calendar as CalendarIcon, 
+  Clock, 
+  Phone, 
+  Mail, 
+  Award, 
+  Sparkles, 
+  Share2, 
+  Check, 
+  Copy, 
+  Percent, 
+  TrendingUp, 
+  DollarSign, 
+  ExternalLink,
+  X,
+  CalendarCheck
 } from 'lucide-react';
 
 export const FuncionariosView = () => {
   const { 
     funcionarios, 
-    agendamentos, 
     saveFuncionario, 
     deleteFuncionario, 
-    openImageUploader, 
     activeEmpresa, 
-    openPublicBookingPage,
-    openWhatsappModal 
+    agendamentos,
+    openWhatsappModal,
+    openPublicBookingPage
   } = useApp();
 
   const [activeTab, setActiveTab] = useState('cards');
-  const [selectedStaffId, setSelectedStaffId] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // Modal Form State
   const [showModal, setShowModal] = useState(false);
-  const [showShareModal, setShowShareModal] = useState(null);
   const [editingFunc, setEditingFunc] = useState(null);
-
-  // Form State
+  
   const [nome, setNome] = useState('');
   const [cargo, setCargo] = useState('');
   const [comissaoPct, setComissaoPct] = useState('');
-  const [foto, setFoto] = useState('');
+  const [foto, setFoto] = useState('https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400');
   const [telefone, setTelefone] = useState('');
   const [email, setEmail] = useState('');
   const [especialidades, setEspecialidades] = useState('');
   const [corAgenda, setCorAgenda] = useState('#0284c7');
   const [linkPublicoSlug, setLinkPublicoSlug] = useState('');
   const [descricao, setDescricao] = useState('');
-  
-  // Work Schedule & Hours
   const [horarioInicio, setHorarioInicio] = useState('08:00');
   const [horarioFim, setHorarioFim] = useState('18:00');
   const [diasAtendimento, setDiasAtendimento] = useState(['seg', 'ter', 'qua', 'qui', 'sex', 'sab']);
 
-  const weekDaysList = [
-    { key: 'seg', label: 'Segunda' },
-    { key: 'ter', label: 'Terça' },
-    { key: 'qua', label: 'Quarta' },
-    { key: 'qui', label: 'Quinta' },
-    { key: 'sex', label: 'Sexta' },
-    { key: 'sab', label: 'Sábado' },
-    { key: 'dom', label: 'Domingo' }
-  ];
+  // Share Modal State
+  const [showShareModal, setShowShareModal] = useState(null);
+  const [copiedLink, setCopiedLink] = useState('');
 
-  const toggleDay = (key) => {
-    if (diasAtendimento.includes(key)) {
-      setDiasAtendimento(diasAtendimento.filter(d => d !== key));
-    } else {
-      setDiasAtendimento([...diasAtendimento, key]);
-    }
-  };
-
-  const openCreateModal = () => {
+  const openNewModal = () => {
     setEditingFunc(null);
     setNome('');
-    setCargo('Profissional');
+    setCargo('');
     setComissaoPct('');
     setFoto('https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400');
     setTelefone('');
     setEmail('');
-    setEspecialidades('');
+    setEspecialidades('Corte, Modelagem');
     setCorAgenda('#0284c7');
     setLinkPublicoSlug('');
     setDescricao('');
@@ -96,7 +80,7 @@ export const FuncionariosView = () => {
   const openEditModal = (func) => {
     setEditingFunc(func);
     setNome(func.nome);
-    setCargo(func.cargo || 'Profissional');
+    setCargo(func.cargo);
     setComissaoPct(func.comissaoPct !== undefined ? func.comissaoPct : '');
     setFoto(func.foto);
     setTelefone(func.telefone || '');
@@ -114,7 +98,7 @@ export const FuncionariosView = () => {
   const handleSave = (e) => {
     e.preventDefault();
     if (!nome) {
-      alert('Informe o nome do funcionário');
+      alert('Informe o nome do profissional');
       return;
     }
 
@@ -141,8 +125,20 @@ export const FuncionariosView = () => {
     setShowModal(false);
   };
 
-  const getFullPublicLink = (slug) => {
+  // Helper to build LINK 2 (Employee Booking Link for End-User Clients)
+  const getFullPublicLink2 = (slug) => {
     return `${window.location.origin}/agendar/${activeEmpresa.slug}/profissional/${slug}`;
+  };
+
+  const handleSendLink2Whatsapp = (func) => {
+    const link2 = getFullPublicLink2(func.linkPublicoSlug || func.nome.toLowerCase().replace(/[^a-z0-9]/g, '-'));
+    const msg = `📅 *AGENDA DIRETA DO PROFISSIONAL: ${func.nome}*\n` +
+      `----------------------------------------\n` +
+      `Olá! Para agendar o seu horário diretamente na agenda do profissional *${func.nome}* (${func.cargo}) na empresa *${activeEmpresa.nome}*, clique no link abaixo:\n\n` +
+      `👉 *CLIQUE AQUI PARA AGENDAR:* ${link2}\n\n` +
+      `Escolha o serviço, data e horário de sua preferência!`;
+
+    openWhatsappModal(func.whatsapp || func.telefone, func.nome, msg);
   };
 
   const currentMonth = new Date().getMonth();
@@ -172,15 +168,27 @@ export const FuncionariosView = () => {
     };
   };
 
+  const filteredFuncionarios = funcionarios.filter(f => {
+    const term = searchTerm.toLowerCase();
+    const nomeF = (f.nome || '').toLowerCase();
+    const cargoF = (f.cargo || '').toLowerCase();
+    return nomeF.includes(term) || cargoF.includes(term);
+  });
+
   return (
-    <div className="space-y-6 animate-fadeIn">
-      {/* Header */}
-      <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-6 animate-fadeIn text-slate-950">
+      {/* Header Bar */}
+      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-black text-slate-950 flex items-center gap-2">
-            <UserCheck className="w-7 h-7 text-cyan-600" /> Cadastro de Equipe & Profissionais
+          <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-cyan-100 text-cyan-950 flex items-center gap-1.5 w-fit mb-2 border border-cyan-300">
+            <CalendarCheck className="w-4 h-4 text-cyan-700" /> LINK 2 • AGENDAS DOS FUNCIONÁRIOS CADASTRADOS
+          </span>
+          <h2 className="text-2xl md:text-3xl font-black text-slate-950 flex items-center gap-2">
+            Cadastro de Equipe & Gerador do LINK 2 das Agendas ({funcionarios.length})
           </h2>
-          <p className="text-sm text-slate-600 font-medium">Cadastre barbeiros, cabeleireiros, esteticistas, porcentagens opcionais e links individuais</p>
+          <p className="text-sm text-slate-600 font-medium mt-1">
+            Cadastre quantos funcionários precisar. Cada profissional tem o seu <b>LINK 2 exclusivo</b> para enviar aos clientes agendarem direto com ele!
+          </p>
         </div>
 
         <div className="flex items-center gap-3">
@@ -191,7 +199,7 @@ export const FuncionariosView = () => {
                 activeTab === 'cards' ? 'bg-white text-cyan-700 shadow-md' : 'text-slate-600 hover:text-slate-950'
               }`}
             >
-              👥 Cards da Equipe
+              👥 Equipe ({funcionarios.length})
             </button>
             <button
               onClick={() => setActiveTab('relatorio')}
@@ -199,116 +207,145 @@ export const FuncionariosView = () => {
                 activeTab === 'relatorio' ? 'bg-white text-cyan-700 shadow-md' : 'text-slate-600 hover:text-slate-950'
               }`}
             >
-              📊 Relatório de Comissões
+              📊 Comissões
             </button>
           </div>
 
           <button
-            onClick={openCreateModal}
-            className="px-5 py-3 rounded-2xl bg-gradient-to-r from-sky-600 to-emerald-500 hover:from-sky-700 hover:to-emerald-600 text-white font-extrabold text-sm shadow-md shadow-cyan-500/20 transition flex items-center gap-2"
+            onClick={openNewModal}
+            className="px-5 py-3 rounded-2xl bg-gradient-to-r from-sky-600 to-cyan-600 hover:from-sky-700 hover:to-cyan-700 text-white font-black text-xs md:text-sm shadow-md transition flex items-center gap-2 uppercase tracking-wider"
           >
-            <Plus className="w-5 h-5" /> Cadastrar Profissional
+            <Plus className="w-5 h-5 text-white" /> Cadastrar Novo Profissional
           </button>
         </div>
       </div>
 
+      {/* Staff Cards View */}
       {activeTab === 'cards' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {funcionarios.map(func => {
-            const stats = calculateStaffStats(func.id, func.comissaoPct);
+        <div className="space-y-4">
+          <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+            <div className="relative flex-1 max-w-md">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Buscar profissional por nome ou cargo..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-300 text-xs font-bold bg-slate-50 outline-none focus:ring-2 focus:ring-cyan-500"
+              />
+            </div>
+            <span className="text-xs font-bold text-slate-500 hidden sm:inline">
+              Crie quantos links de funcionários desejar!
+            </span>
+          </div>
 
-            return (
-              <div key={func.id} className="bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col justify-between group">
-                <div className="p-6">
-                  {/* Photo & Header info */}
-                  <div className="flex items-start gap-4">
-                    <div className="relative group/avatar">
-                      <img src={func.foto} alt={func.nome} className="w-20 h-20 rounded-2xl object-cover border-2 border-cyan-400 shadow-md" />
-                      <button
-                        onClick={() => openImageUploader('Foto do Profissional', func.foto, (newUrl) => saveFuncionario({ ...func, foto: newUrl }))}
-                        className="absolute inset-0 bg-slate-900/70 rounded-2xl opacity-0 group-hover/avatar:opacity-100 transition flex items-center justify-center text-white"
-                      >
-                        <Camera className="w-5 h-5" />
-                      </button>
-                    </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredFuncionarios.map(func => {
+              const stats = calculateStaffStats(func.id, func.comissaoPct);
+              const link2Url = getFullPublicLink2(func.linkPublicoSlug || func.nome.toLowerCase().replace(/[^a-z0-9]/g, '-'));
 
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className="px-3 py-1 rounded-full text-xs font-black bg-cyan-100 text-cyan-900 border border-cyan-300">
-                          {func.cargo || 'Profissional'}
-                        </span>
-                        <div className="flex items-center gap-1 text-amber-500 font-extrabold text-xs">
-                          <Star className="w-4 h-4 fill-amber-400" />
-                          <span>{func.notaMedia || 5.0}</span>
-                        </div>
+              return (
+                <div key={func.id} className="bg-white rounded-3xl border-2 border-slate-200 hover:border-cyan-400 shadow-sm hover:shadow-md transition overflow-hidden flex flex-col justify-between">
+                  <div className="p-6 space-y-4">
+                    <div className="flex items-start gap-4">
+                      <div className="relative">
+                        <img src={func.foto} alt={func.nome} className="w-16 h-16 rounded-2xl object-cover border-2 border-cyan-400 shadow-md" />
+                        <span 
+                          className="w-4 h-4 rounded-full absolute -top-1 -right-1 border-2 border-white shadow-xs" 
+                          style={{ backgroundColor: func.corAgenda || '#0284c7' }}
+                          title="Cor da Agenda"
+                        />
                       </div>
 
-                      <h3 className="font-extrabold text-lg text-slate-950 mt-1 truncate">{func.nome}</h3>
-                      <p className="text-xs font-bold text-emerald-700 flex items-center gap-1 mt-0.5">
-                        <Percent className="w-3.5 h-3.5" /> Comissão: {func.comissaoPct ? `${func.comissaoPct}%` : 'Opcional (Não cadastrada)'}
-                      </p>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-black text-lg text-slate-950 truncate">{func.nome}</h3>
+                        <p className="text-xs font-extrabold text-cyan-700">{func.cargo}</p>
+                        
+                        {func.comissaoPct !== undefined && func.comissaoPct > 0 && (
+                          <span className="mt-1 px-2.5 py-0.5 rounded-md text-[10px] font-black bg-emerald-100 text-emerald-950 border border-emerald-300 inline-block">
+                            Comissão: {func.comissaoPct}%
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* LINK 2 SPECIFIC BOX FOR THIS EMPLOYEE */}
+                    <div className="p-3 bg-cyan-50/80 rounded-2xl border border-cyan-300 space-y-1">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-cyan-900 flex items-center gap-1">
+                        <Share2 className="w-3.5 h-3.5 text-cyan-700" /> LINK 2 • AGENDA DO PROFISSIONAL:
+                      </span>
+                      <div className="font-mono text-[11px] font-black text-cyan-950 truncate bg-white p-1.5 rounded-lg border border-cyan-200">
+                        {link2Url}
+                      </div>
+                    </div>
+
+                    {/* Specialties & Hours */}
+                    <div className="pt-2 border-t border-slate-100 space-y-2">
+                      <div className="flex flex-wrap gap-1">
+                        {Array.isArray(func.especialidades) && func.especialidades.map((esp, i) => (
+                          <span key={i} className="px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700">
+                            {esp}
+                          </span>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs text-slate-600 font-semibold pt-1">
+                        <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-cyan-600" /> {func.horarioInicio || '08:00'} - {func.horarioFim || '18:00'}</span>
+                      </div>
+                    </div>
+
+                    {/* Monthly Performance Stats */}
+                    <div className="grid grid-cols-2 gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-100 text-center">
+                      <div>
+                        <span className="text-[11px] font-black uppercase text-slate-500 block">Atendimentos Mês</span>
+                        <span className="text-base font-black text-slate-950">{stats.atendimentosMes}</span>
+                      </div>
+                      <div>
+                        <span className="text-[11px] font-black uppercase text-emerald-700 block">Comissão Mês</span>
+                        <span className="text-base font-black text-emerald-600">R$ {stats.ganhosMes.toFixed(2)}</span>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Specialties & Hours */}
-                  <div className="mt-4 pt-4 border-t border-slate-100 space-y-2">
-                    <div className="flex flex-wrap gap-1">
-                      {Array.isArray(func.especialidades) && func.especialidades.map((esp, i) => (
-                        <span key={i} className="px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700">
-                          {esp}
-                        </span>
-                      ))}
-                    </div>
+                  {/* Footer Action Buttons */}
+                  <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-2">
+                    <button
+                      onClick={() => setShowShareModal(func)}
+                      className="flex-1 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-extrabold transition flex items-center justify-center gap-1 shadow-sm"
+                    >
+                      <Share2 className="w-3.5 h-3.5" /> Ver / Copiar LINK 2
+                    </button>
 
-                    <div className="flex items-center justify-between text-xs text-slate-600 font-semibold pt-1">
-                      <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-cyan-600" /> {func.horarioInicio || '08:00'} - {func.horarioFim || '18:00'}</span>
-                      <span>Link: <b className="font-mono text-cyan-700">/{func.linkPublicoSlug}</b></span>
-                    </div>
-                  </div>
+                    <button
+                      onClick={() => handleSendLink2Whatsapp(func)}
+                      className="p-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 transition border border-emerald-400"
+                      title="Enviar LINK 2 no WhatsApp"
+                    >
+                      <Phone className="w-4 h-4 text-slate-950" />
+                    </button>
 
-                  {/* Monthly Performance Stats */}
-                  <div className="mt-4 grid grid-cols-2 gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-100 text-center">
-                    <div>
-                      <span className="text-[11px] font-black uppercase text-slate-500 block">Atendimentos Mês</span>
-                      <span className="text-base font-black text-slate-950">{stats.atendimentosMes}</span>
-                    </div>
-                    <div>
-                      <span className="text-[11px] font-black uppercase text-emerald-700 block">Comissão Mês</span>
-                      <span className="text-base font-black text-emerald-600">R$ {stats.ganhosMes.toFixed(2)}</span>
-                    </div>
+                    <button
+                      onClick={() => openEditModal(func)}
+                      className="p-2.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 transition"
+                      title="Editar Profissional"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        if (window.confirm(`Deseja remover o profissional "${func.nome}"?`)) deleteFuncionario(func.id);
+                      }}
+                      className="p-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition"
+                      title="Excluir Profissional"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
-
-                {/* Footer Buttons */}
-                <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-2">
-                  <button
-                    onClick={() => setShowShareModal(func)}
-                    className="flex-1 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-extrabold transition flex items-center justify-center gap-1 shadow-sm"
-                  >
-                    <Share2 className="w-3.5 h-3.5" /> Link de Agendamento
-                  </button>
-
-                  <button
-                    onClick={() => openEditModal(func)}
-                    className="p-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 transition"
-                    title="Editar Profissional"
-                  >
-                    <Edit3 className="w-4 h-4" />
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      if (window.confirm(`Deseja remover o profissional "${func.nome}"?`)) deleteFuncionario(func.id);
-                    }}
-                    className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition"
-                    title="Excluir Profissional"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -405,7 +442,7 @@ export const FuncionariosView = () => {
               </div>
 
               <div>
-                <label className="block font-extrabold text-slate-950 mb-1">Link Público Personalizado (Slug)</label>
+                <label className="block font-extrabold text-slate-950 mb-1">Link Público Personalizado do Profissional (Slug)</label>
                 <div className="flex items-center gap-1 bg-slate-100 px-3 py-2 rounded-xl border border-slate-300">
                   <span className="text-xs text-slate-500 font-mono">/agendar/.../profissional/</span>
                   <input
@@ -444,77 +481,21 @@ export const FuncionariosView = () => {
                     />
                   </div>
                 </div>
-
-                <div>
-                  <label className="block font-bold text-slate-950 mb-1 text-xs">Dias da Semana Atendidos:</label>
-                  <div className="flex flex-wrap gap-1.5">
-                    {weekDaysList.map(w => {
-                      const isSelected = diasAtendimento.includes(w.key);
-                      return (
-                        <button
-                          type="button"
-                          key={w.key}
-                          onClick={() => toggleDay(w.key)}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase transition ${
-                            isSelected ? 'bg-cyan-700 text-white shadow-xs' : 'bg-white text-slate-700 border border-slate-300'
-                          }`}
-                        >
-                          {w.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block font-extrabold text-slate-950 mb-1">WhatsApp / Telefone</label>
-                  <input
-                    type="text"
-                    placeholder="(11) 99999-0000"
-                    value={telefone}
-                    onChange={(e) => setTelefone(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-slate-950 text-sm font-bold outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-extrabold text-slate-950 mb-1">E-mail</label>
-                  <input
-                    type="email"
-                    placeholder="carlos@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-slate-950 text-sm font-bold outline-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-extrabold text-slate-950 mb-1">Especialidades (Separadas por vírgula)</label>
-                <input
-                  type="text"
-                  placeholder="Corte Degradê, Barba, Pigmentação"
-                  value={especialidades}
-                  onChange={(e) => setEspecialidades(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-slate-950 text-sm font-bold outline-none"
-                />
-              </div>
-
-              <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
+              <div className="flex justify-end gap-3 pt-2 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2.5 rounded-xl text-slate-700 hover:bg-slate-100 font-bold"
+                  className="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-100 font-bold"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 rounded-xl text-white font-extrabold text-sm bg-gradient-to-r from-sky-600 to-emerald-500 hover:from-sky-700 hover:to-emerald-600 shadow-md"
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-sky-600 to-emerald-500 text-white font-extrabold shadow-md hover:from-sky-700 hover:to-emerald-600"
                 >
-                  {editingFunc ? 'Salvar Alterações' : 'Cadastrar Profissional'}
+                  Salvar Profissional
                 </button>
               </div>
             </form>
@@ -522,7 +503,7 @@ export const FuncionariosView = () => {
         </div>
       )}
 
-      {/* Share Professional Link Modal */}
+      {/* Share Professional Link Modal for LINK 2 */}
       {showShareModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/75 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 text-center space-y-4 border border-slate-100">
@@ -530,37 +511,44 @@ export const FuncionariosView = () => {
               <Share2 className="w-8 h-8" />
             </div>
 
-            <h3 className="font-extrabold text-xl text-slate-950">
-              Link de Agendamento Exclusivo: {showShareModal.nome}
-            </h3>
+            <div className="space-y-1">
+              <span className="px-3 py-0.5 bg-amber-400 text-slate-950 rounded-full text-[10px] font-black uppercase">
+                LINK 2 • AGENDA DO PROFISSIONAL
+              </span>
+              <h3 className="font-extrabold text-xl text-slate-950">
+                Link de Agendamento: {showShareModal.nome}
+              </h3>
+            </div>
 
             <p className="text-xs text-slate-600 font-medium">
-              Envie este link direto para os clientes agendarem horários especificamente com {showShareModal.nome}:
+              Envie este LINK 2 para os clientes agendarem horários especificamente na agenda do profissional {showShareModal.nome}:
             </p>
 
             <div className="p-3 bg-slate-100 rounded-xl border border-slate-300 font-mono text-xs text-cyan-800 break-all font-bold">
-              {getFullPublicLink(showShareModal.linkPublicoSlug || showShareModal.nome.toLowerCase().replace(/[^a-z0-9]/g, '-'))}
+              {getFullPublicLink2(showShareModal.linkPublicoSlug || showShareModal.nome.toLowerCase().replace(/[^a-z0-9]/g, '-'))}
             </div>
 
             <div className="grid grid-cols-2 gap-2 pt-2">
               <button
                 onClick={() => {
-                  navigator.clipboard.writeText(getFullPublicLink(showShareModal.linkPublicoSlug || showShareModal.nome.toLowerCase().replace(/[^a-z0-9]/g, '-')));
-                  alert('Link copiado!');
+                  navigator.clipboard.writeText(getFullPublicLink2(showShareModal.linkPublicoSlug || showShareModal.nome.toLowerCase().replace(/[^a-z0-9]/g, '-')));
+                  setCopiedLink('copiado');
+                  setTimeout(() => setCopiedLink(''), 3000);
                 }}
-                className="py-2.5 rounded-xl bg-slate-900 text-white font-extrabold text-xs shadow-md"
+                className="py-3 rounded-xl bg-slate-900 text-white font-extrabold text-xs shadow-md flex items-center justify-center gap-1"
               >
-                Copiar Link
+                {copiedLink === 'copiado' ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                {copiedLink === 'copiado' ? 'Link Copiado!' : 'Copiar LINK 2'}
               </button>
 
               <button
                 onClick={() => {
-                  openPublicBookingPage(activeEmpresa.slug, showShareModal.linkPublicoSlug || showShareModal.nome.toLowerCase().replace(/[^a-z0-9]/g, '-'));
+                  handleSendLink2Whatsapp(showShareModal);
                   setShowShareModal(null);
                 }}
-                className="py-2.5 rounded-xl bg-cyan-600 text-white font-extrabold text-xs shadow-md"
+                className="py-3 rounded-xl bg-emerald-500 text-slate-950 font-black text-xs shadow-md flex items-center justify-center gap-1 uppercase"
               >
-                Testar Link
+                <Phone className="w-4 h-4 text-slate-950" /> Enviar WhatsApp
               </button>
             </div>
 

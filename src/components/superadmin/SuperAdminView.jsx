@@ -30,7 +30,8 @@ import {
   Check,
   X,
   Unlock,
-  Shield
+  Shield,
+  Download
 } from 'lucide-react';
 import { getLabelDuracao } from '../../services/licenseService';
 
@@ -70,12 +71,18 @@ export const SuperAdminView = () => {
   const [copiedCode, setCopiedCode] = useState('');
   const [lastGeneratedKey, setLastGeneratedKey] = useState(null);
 
+  // Helper to build LINK 1 (App Installation Link for Buyer Clients)
+  const getAppInstallLink1 = (empSlug) => {
+    return `${window.location.origin}/instalar/${empSlug}`;
+  };
+
   // Single Action: Register Buyer Company & Generate License
   const handleCadastrarEmpresaEGerarLicenca = (e) => {
     e.preventDefault();
     if (!nomeEmpresa) return;
 
     const newEmpId = `emp-${Date.now()}`;
+    const generatedSlug = nomeEmpresa.toLowerCase().replace(/[^a-z0-9]/g, '-');
     const newEmpObj = {
       id: newEmpId,
       nome: nomeEmpresa.trim(),
@@ -83,7 +90,7 @@ export const SuperAdminView = () => {
       responsavel: nomeResponsavel.trim() || 'Proprietário',
       whatsapp: whatsapp.trim() || '',
       telefone: whatsapp.trim() || '',
-      slug: nomeEmpresa.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+      slug: generatedSlug,
       isReseller: isReseller,
       status: 'ativo',
       segmento: 'Comercial'
@@ -92,7 +99,7 @@ export const SuperAdminView = () => {
     saveEmpresa(newEmpObj);
 
     const lic = gerarLicencaPersonalizada(newEmpId, duracaoLicenca, whatsapp);
-    setLastGeneratedKey(lic);
+    setLastGeneratedKey({ ...lic, empresaSlug: generatedSlug });
 
     setNomeEmpresa('');
     setNomeResponsavel('');
@@ -110,21 +117,17 @@ export const SuperAdminView = () => {
   // 1-Click Block / 2-Click Unblock Logic
   const handleBlockUnblockToggle = (licId, isRevoked) => {
     if (!isRevoked) {
-      // 1-CLICK BLOCK: Instantly block license
       revogarLicenca(licId);
       setUnblockPendingId(null);
     } else {
-      // 2-CLICK UNBLOCK: Requires second click confirmation
       if (unblockPendingId === licId) {
-        // Second Click -> Unblock license
         revogarLicenca(licId);
         setUnblockPendingId(null);
       } else {
-        // First Click -> Prompt for 2nd click confirmation
         setUnblockPendingId(licId);
         setTimeout(() => {
           setUnblockPendingId(prev => prev === licId ? null : prev);
-        }, 4000); // 4s timeout to complete 2nd click
+        }, 4000);
       }
     }
   };
@@ -135,25 +138,25 @@ export const SuperAdminView = () => {
     setTimeout(() => setCopiedCode(''), 3000);
   };
 
-  const handleShareWhatsapp = (lic) => {
-    const empObj = empresas.find(e => e.id === lic.empresaId);
-    const labelDur = getLabelDuracao(lic.duracao || '1_MES');
-    const dateAtivacao = lic.criadoEm ? new Date(lic.criadoEm).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR');
-    const dateExpiracao = new Date(lic.dataExpiracaoIso || lic.dataExpiracao).toLocaleString('pt-BR');
-    
-    const whatsappMsg = `🔑 *LICENÇA DO SISTEMA GERADA COM SUCESSO!*\n` +
-      `----------------------------------------\n` +
-      `🏢 *Empresa:* ${empObj ? empObj.nome : (lic.empresaNome || 'Empresa Cliente')}\n` +
-      `👤 *Responsável:* ${empObj?.nomeProprietario || empObj?.responsavel || lic.nomeProprietario || 'Cliente'}\n` +
-      `📌 *Plano:* ${labelDur}\n` +
-      `📅 *Data de Ativação:* ${dateAtivacao}\n` +
-      `⏳ *Data de Expiração:* ${dateExpiracao}\n` +
-      `👑 *Acesso Master:* ${empObj?.isReseller ? 'SIM (Revendedor)' : 'NÃO (Cliente Comum)'}\n` +
-      `🔑 *Chave de Ativação:* *${lic.codigoAtivacao}*\n` +
-      `----------------------------------------\n` +
-      `Abra o sistema no seu computador ou celular e digite sua Chave de Ativação no campo de licenças para liberar o uso imediato!`;
+  // Dispatch LINK 1 (App Installation) via WhatsApp to buyer
+  const handleSendLink1InstallWhatsapp = (emp, lic) => {
+    const link1 = getAppInstallLink1(emp.slug || 'app');
+    const labelDur = getLabelDuracao(lic?.duracao || '1_MES');
+    const dateExp = new Date(lic?.dataExpiracaoIso || lic?.dataExpiracao || Date.now()).toLocaleString('pt-BR');
 
-    openWhatsappModal(lic.whatsapp || empObj?.whatsapp || empObj?.telefone, empObj ? empObj.nome : 'Cliente', whatsappMsg);
+    const msgInstall = `📱 *LINK 1: INSTALAÇÃO DO APLICATIVO DO SEU SISTEMA*\n` +
+      `----------------------------------------\n` +
+      `🏢 *Empresa:* ${emp.nome}\n` +
+      `👤 *Proprietário:* ${emp.nomeProprietario || emp.responsavel || 'Cliente'}\n` +
+      `📌 *Plano:* ${labelDur}\n` +
+      `⏳ *Válido até:* ${dateExp}\n` +
+      `🔑 *Sua Chave de Licença:* *${lic?.codigoAtivacao || 'AGY-MASTER'}*\n` +
+      `----------------------------------------\n` +
+      `📲 *CLIQUE NO LINK ABAIXO PARA INSTALAR O APP NO SEU CELULAR/PC:*\n` +
+      `${link1}\n\n` +
+      `Ao abrir o link, clique em "Instalar Aplicativo" e digite sua Chave de Ativação!`;
+
+    openWhatsappModal(emp.whatsapp || emp.telefone, emp.nome, msgInstall);
   };
 
   // Filtered Buyer Companies
@@ -174,10 +177,10 @@ export const SuperAdminView = () => {
             <Crown className="w-4 h-4 text-slate-950" /> Painel Master SuperAdmin SaaS
           </span>
           <h2 className="text-2xl md:text-3xl font-black text-white flex items-center gap-2.5">
-            Cadastro de Compradores & Trava de Bloqueio 1-Clique / 2-Cliques
+            Gerenciador do LINK 1 (Instalação do App) & Validades
           </h2>
           <p className="text-sm text-slate-300 font-medium mt-1">
-            Bloqueie qualquer cliente com 1 clique. Para desbloquear, clique 2 vezes para maior segurança!
+            Gere o <b>LINK 1</b> para enviar aos clientes que comprarem o seu sistema instalarem o aplicativo no celular ou computador!
           </p>
         </div>
 
@@ -198,19 +201,19 @@ export const SuperAdminView = () => {
         </div>
       </div>
 
-      {/* UNIFIED SINGLE FORM CARD: CADASTRO COMPLETO DE CLIENTE COMPRADOR */}
+      {/* UNIFIED SINGLE FORM CARD: CADASTRO COMPLETO DE CLIENTE COMPRADOR & GERADOR DO LINK 1 */}
       <div className="bg-white p-6 md:p-8 rounded-3xl border-2 border-sky-500/40 shadow-xl space-y-4 text-slate-950">
         <div className="flex items-center justify-between border-b border-slate-200 pb-4">
           <div>
             <h3 className="text-xl md:text-2xl font-black text-slate-950 flex items-center gap-2">
-              <Building2 className="w-7 h-7 text-sky-600" /> Cadastro Completo de Cliente Comprador
+              <Download className="w-7 h-7 text-sky-600" /> Cadastrar Comprador & Gerar LINK 1 (Instalação do App)
             </h3>
             <p className="text-xs text-slate-600 font-bold mt-1">
-              Cadastre nome da empresa, responsável pessoal e telefone para controle completo de clientes no sistema.
+              Cadastre nome da empresa, responsável pessoal e telefone para gerar a chave e o LINK 1 de instalação do app.
             </p>
           </div>
           <span className="px-3 py-1 bg-sky-100 text-sky-900 rounded-full text-xs font-black uppercase">
-            Novo Cadastro
+            LINK 1 • COMPRADORES
           </span>
         </div>
 
@@ -219,7 +222,7 @@ export const SuperAdminView = () => {
             {/* NOME DA EMPRESA */}
             <div>
               <label className="block text-xs font-black uppercase text-slate-900 mb-1 flex items-center gap-1">
-                <Building2 className="w-4 h-4 text-sky-600" /> NOME DA EMPRESA *
+                <Building2 className="w-4 h-4 text-sky-600" /> NOME DA EMPRESA COMPRADORA *
               </label>
               <input
                 type="text"
@@ -299,55 +302,68 @@ export const SuperAdminView = () => {
             type="submit"
             className="w-full py-4 px-6 bg-gradient-to-r from-sky-600 via-cyan-600 to-emerald-500 hover:from-sky-700 hover:to-emerald-600 text-white font-black text-base rounded-2xl shadow-lg transition flex items-center justify-center gap-2 uppercase tracking-wider"
           >
-            <Plus className="w-6 h-6 text-white" /> Cadastrar Empresa & Emitir Licença no WhatsApp
+            <Download className="w-6 h-6 text-white" /> Cadastrar & Gerar LINK 1 (Instalação do App)
           </button>
         </form>
 
-        {/* Generated Key Banner Result */}
+        {/* Generated Key & LINK 1 Banner Result */}
         {lastGeneratedKey && (
           <div className="p-5 rounded-2xl bg-amber-50 border-2 border-amber-300 text-amber-950 space-y-3 animate-scaleUp">
             <div className="flex justify-between items-center">
-              <span className="text-xs font-black uppercase tracking-wider text-amber-900">
-                🎉 Licença Emitida: {getLabelDuracao(lastGeneratedKey.duracao)}
+              <span className="text-xs font-black uppercase tracking-wider text-amber-900 flex items-center gap-1">
+                <Sparkles className="w-4 h-4" /> LINK 1 GERADO COM SUCESSO! ({getLabelDuracao(lastGeneratedKey.duracao)})
               </span>
               <span className="text-xs font-mono font-bold text-slate-600">
                 Expira: {new Date(lastGeneratedKey.dataExpiracaoIso || lastGeneratedKey.dataExpiracao).toLocaleString('pt-BR')}
               </span>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center justify-between bg-white p-3.5 rounded-xl border border-amber-300 gap-3">
-              <span className="font-mono font-black text-xl md:text-2xl text-slate-950">{lastGeneratedKey.codigoAtivacao}</span>
-              
-              <div className="flex gap-2 w-full sm:w-auto">
-                <button
-                  onClick={() => copyToClipboard(lastGeneratedKey.codigoAtivacao)}
-                  className="flex-1 sm:flex-initial px-4 py-2.5 bg-amber-400 hover:bg-amber-500 text-slate-950 font-black text-xs rounded-xl transition flex items-center justify-center gap-1"
-                >
-                  {copiedCode === lastGeneratedKey.codigoAtivacao ? <CheckCircle2 className="w-4 h-4 text-emerald-800" /> : <Copy className="w-4 h-4" />}
-                  {copiedCode === lastGeneratedKey.codigoAtivacao ? 'Copiado!' : 'Copiar'}
-                </button>
-
-                <button
-                  onClick={() => handleShareWhatsapp(lastGeneratedKey)}
-                  className="flex-1 sm:flex-initial px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs rounded-xl transition flex items-center justify-center gap-1 shadow-sm"
-                >
-                  <Share2 className="w-4 h-4" /> Enviar WhatsApp
-                </button>
+            <div className="p-3 bg-white rounded-xl border border-amber-300 space-y-2">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-2 border-b border-amber-100 pb-2">
+                <span className="text-xs font-bold text-slate-600">Chave de Ativação:</span>
+                <span className="font-mono font-black text-xl text-slate-950">{lastGeneratedKey.codigoAtivacao}</span>
               </div>
+
+              <div className="space-y-1">
+                <span className="text-xs font-bold text-sky-800">📱 LINK 1 (Envie ao Comprador para Instalar o App):</span>
+                <div className="p-2 bg-sky-50 rounded-lg border border-sky-300 font-mono text-xs text-sky-950 font-black break-all">
+                  {getAppInstallLink1(lastGeneratedKey.empresaSlug || 'app')}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2 pt-1">
+              <button
+                onClick={() => copyToClipboard(getAppInstallLink1(lastGeneratedKey.empresaSlug || 'app'))}
+                className="flex-1 py-3 px-4 bg-sky-600 hover:bg-sky-700 text-white font-black text-xs rounded-xl transition flex items-center justify-center gap-1 shadow-sm"
+              >
+                {copiedCode === getAppInstallLink1(lastGeneratedKey.empresaSlug || 'app') ? <CheckCircle2 className="w-4 h-4 text-emerald-300" /> : <Copy className="w-4 h-4" />}
+                {copiedCode === getAppInstallLink1(lastGeneratedKey.empresaSlug || 'app') ? 'LINK 1 Copiado!' : 'Copiar LINK 1 (Instalação)'}
+              </button>
+
+              <button
+                onClick={() => {
+                  const empObj = empresas.find(e => e.id === lastGeneratedKey.empresaId) || { nome: 'Cliente', whatsapp: whatsapp };
+                  handleSendLink1InstallWhatsapp(empObj, lastGeneratedKey);
+                }}
+                className="flex-1 py-3 px-4 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-xs rounded-xl transition flex items-center justify-center gap-1 shadow-sm uppercase"
+              >
+                <Share2 className="w-4 h-4 text-slate-950" /> Enviar LINK 1 no WhatsApp
+              </button>
             </div>
           </div>
         )}
       </div>
 
-      {/* MASTER UNIFIED TABLE: CADASTRO GERAL DE EMPRESAS, STATUS MASTER & VALIDADES */}
+      {/* MASTER UNIFIED TABLE: GERENCIADOR DO LINK 1 DOS COMPRADORES */}
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4">
           <div>
             <h3 className="font-black text-xl text-slate-950 flex items-center gap-2">
-              <Building2 className="w-6 h-6 text-sky-600" /> Cadastro Geral de Empresas, Status Master & Validades ({empresas.length})
+              <Building2 className="w-6 h-6 text-sky-600" /> Gerenciador de Compradores & LINK 1 de Instalação ({empresas.length})
             </h3>
             <p className="text-xs text-slate-500 font-bold mt-0.5">
-              1 clique para Bloquear • 2 cliques para Desbloquear a licença do cliente.
+              Clique em <b>Copiar LINK 1</b> para enviar o instalador do aplicativo para a empresa compradora.
             </p>
           </div>
 
@@ -365,16 +381,15 @@ export const SuperAdminView = () => {
 
         {/* FULL MOBILE HORIZONTAL SCROLL WRAPPER */}
         <div className="w-full overflow-x-auto min-w-full touch-pan-x scrollbar-thin pb-4">
-          <table className="w-full text-left text-sm border-collapse min-w-[1000px]">
+          <table className="w-full text-left text-sm border-collapse min-w-[1050px]">
             <thead>
               <tr className="border-b border-slate-200 text-slate-500 font-black uppercase text-xs bg-slate-50">
-                <th className="py-3.5 px-4 rounded-l-xl">Empresa & Responsável Pessoal</th>
-                <th className="py-3.5 px-4">WhatsApp</th>
+                <th className="py-3.5 px-4 rounded-l-xl">Empresa & Comprador</th>
+                <th className="py-3.5 px-4">LINK 1 (Instalação App)</th>
                 <th className="py-3.5 px-4">Status Master</th>
                 <th className="py-3.5 px-4">Chave Emitida</th>
-                <th className="py-3.5 px-4">Data de Ativação</th>
-                <th className="py-3.5 px-4">Data de Expiração</th>
-                <th className="py-3.5 px-4">Trava de Bloqueio (1x / 2x)</th>
+                <th className="py-3.5 px-4">Validade</th>
+                <th className="py-3.5 px-4">Trava (1x / 2x)</th>
                 <th className="py-3.5 px-4 text-right rounded-r-xl">Ações Master</th>
               </tr>
             </thead>
@@ -391,8 +406,7 @@ export const SuperAdminView = () => {
 
                 const isRevoked = licObj.status === 'REVOGADO';
                 const isUnblockPending = unblockPendingId === licObj.id;
-
-                const dateAtiv = licObj.criadoEm ? new Date(licObj.criadoEm).toLocaleString('pt-BR') : 'Hoje';
+                const link1Url = getAppInstallLink1(emp.slug || 'app');
                 const dateExp = new Date(licObj.dataExpiracaoIso || licObj.dataExpiracao).toLocaleString('pt-BR');
 
                 return (
@@ -405,59 +419,60 @@ export const SuperAdminView = () => {
                       </div>
                     </td>
 
-                    {/* WhatsApp */}
-                    <td className="py-4 px-4 font-mono text-xs text-slate-800 whitespace-nowrap">
-                      {emp.whatsapp || emp.telefone ? (
+                    {/* LINK 1 INSTALAÇÃO BUTTON */}
+                    <td className="py-4 px-4 whitespace-nowrap">
+                      <div className="flex items-center gap-1.5">
                         <button
-                          onClick={() => handleShareWhatsapp(licObj)}
-                          className="px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-950 rounded-xl font-bold border border-emerald-300 flex items-center gap-1 transition"
+                          onClick={() => copyToClipboard(link1Url)}
+                          className="px-3 py-1.5 bg-sky-100 hover:bg-sky-200 text-sky-950 rounded-xl font-extrabold text-xs border border-sky-300 flex items-center gap-1 transition shadow-xs"
+                          title="Copiar LINK 1 de Instalação do App"
                         >
-                          <Phone className="w-3.5 h-3.5 text-emerald-700" /> {emp.whatsapp || emp.telefone}
+                          <Download className="w-3.5 h-3.5 text-sky-700" /> Copiar LINK 1
                         </button>
-                      ) : (
-                        <span className="text-slate-400 font-sans italic">Não informado</span>
-                      )}
+
+                        <button
+                          onClick={() => handleSendLink1InstallWhatsapp(emp, licObj)}
+                          className="p-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-950 rounded-xl font-bold border border-emerald-300 transition"
+                          title="Enviar LINK 1 no WhatsApp do Comprador"
+                        >
+                          <Phone className="w-3.5 h-3.5 text-emerald-700" />
+                        </button>
+                      </div>
                     </td>
 
                     {/* Toggle Master Status Button */}
                     <td className="py-4 px-4 whitespace-nowrap">
                       <button
                         onClick={() => togglePermissaoRevendedor(emp.id)}
-                        className={`px-3.5 py-2 rounded-xl text-xs font-black transition border shadow-xs flex items-center gap-1.5 ${
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition border shadow-xs flex items-center gap-1.5 ${
                           emp.isReseller
                             ? 'bg-amber-400 hover:bg-amber-500 text-slate-950 border-amber-300'
                             : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
                         }`}
-                        title="Clique para alternar permissão Master / Revendedor"
                       >
-                        <Crown className={`w-4 h-4 ${emp.isReseller ? 'text-slate-950' : 'text-slate-400'}`} />
-                        <span>{emp.isReseller ? '👑 Master Revendedor' : '🏢 Cliente Comum'}</span>
+                        <Crown className={`w-3.5 h-3.5 ${emp.isReseller ? 'text-slate-950' : 'text-slate-400'}`} />
+                        <span>{emp.isReseller ? '👑 Master' : '🏢 Cliente'}</span>
                       </button>
                     </td>
 
                     {/* Chave de Ativacao */}
                     <td className="py-4 px-4 font-mono text-xs font-black text-slate-900 whitespace-nowrap">
-                      <span className="bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-300">
+                      <span className="bg-slate-100 px-2 py-1 rounded-lg border border-slate-300">
                         {licObj.codigoAtivacao}
                       </span>
-                    </td>
-
-                    {/* Data de Ativação */}
-                    <td className="py-4 px-4 font-mono text-xs font-bold text-slate-700 whitespace-nowrap">
-                      {dateAtiv}
                     </td>
 
                     {/* Data de Expiração com Botao de Estender */}
                     <td className="py-4 px-4 font-mono text-xs font-black text-slate-900 whitespace-nowrap">
                       <div className="flex items-center gap-1.5">
-                        <span className="bg-amber-100 text-amber-950 px-2.5 py-1 rounded-lg border border-amber-300">
+                        <span className="bg-amber-100 text-amber-950 px-2 py-1 rounded-lg border border-amber-300">
                           ⏳ {dateExp}
                         </span>
 
                         <button
                           onClick={() => extenderLicencaDias(licObj.id, 30)}
                           className="px-2 py-1 rounded-lg bg-sky-100 hover:bg-sky-200 text-sky-900 text-[10px] font-black border border-sky-300 transition"
-                          title="Adicionar +30 Dias de Licença"
+                          title="Adicionar +30 Dias"
                         >
                           +30D
                         </button>
@@ -468,29 +483,28 @@ export const SuperAdminView = () => {
                     <td className="py-4 px-4 whitespace-nowrap">
                       <button
                         onClick={() => handleBlockUnblockToggle(licObj.id, isRevoked)}
-                        className={`px-3.5 py-2 rounded-xl text-xs font-black transition border shadow-sm flex items-center gap-1.5 ${
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition border shadow-xs flex items-center gap-1.5 ${
                           !isRevoked
-                            ? 'bg-emerald-500 hover:bg-rose-600 text-white border-emerald-400 hover:border-rose-500'
+                            ? 'bg-emerald-500 hover:bg-rose-600 text-white border-emerald-400'
                             : isUnblockPending
                             ? 'bg-amber-500 hover:bg-emerald-600 text-slate-950 hover:text-white border-amber-400 animate-pulse'
                             : 'bg-rose-600 hover:bg-amber-500 text-white border-rose-500'
                         }`}
-                        title={!isRevoked ? "Clique 1 vez para BLOQUEAR este cliente" : "Clique 2 vezes para DESBLOQUEAR este cliente"}
                       >
                         {!isRevoked ? (
                           <>
-                            <Shield className="w-4 h-4 text-white" />
-                            <span>🟢 ATIVO (Clique 1x P/ Bloquear)</span>
+                            <Shield className="w-3.5 h-3.5 text-white" />
+                            <span>🟢 ATIVO</span>
                           </>
                         ) : isUnblockPending ? (
                           <>
-                            <Unlock className="w-4 h-4 text-slate-950" />
-                            <span>⚠️ Clique +1x para Confirmar Desbloqueio</span>
+                            <Unlock className="w-3.5 h-3.5 text-slate-950" />
+                            <span>⚠️ Confirmar</span>
                           </>
                         ) : (
                           <>
-                            <Lock className="w-4 h-4 text-white" />
-                            <span>🚨 BLOQUEADO (Clique 2x P/ Desbloquear)</span>
+                            <Lock className="w-3.5 h-3.5 text-white" />
+                            <span>🚨 BLOQUEADO</span>
                           </>
                         )}
                       </button>
@@ -499,7 +513,6 @@ export const SuperAdminView = () => {
                     {/* Ações de Gerenciamento Complete */}
                     <td className="py-4 px-4 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1.5">
-                        {/* Edit Buyer Info */}
                         <button
                           onClick={() => setEditingEmpresa(emp)}
                           className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-300 transition"
@@ -508,16 +521,6 @@ export const SuperAdminView = () => {
                           <Edit3 className="w-4 h-4 text-slate-800" />
                         </button>
 
-                        {/* Reenviar WhatsApp */}
-                        <button
-                          onClick={() => handleShareWhatsapp(licObj)}
-                          className="p-2 rounded-xl bg-emerald-100 hover:bg-emerald-200 text-emerald-950 border border-emerald-300 transition"
-                          title="Reenviar pelo WhatsApp"
-                        >
-                          <Share2 className="w-4 h-4 text-emerald-700" />
-                        </button>
-
-                        {/* Excluir Registro */}
                         <button
                           onClick={() => {
                             if (window.confirm(`Tem certeza que deseja excluir o cadastro da empresa "${emp.nome}"?`)) {

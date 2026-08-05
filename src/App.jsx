@@ -27,8 +27,9 @@ import { NotificacoesView } from './components/notificacoes/NotificacoesView';
 import { RelatoriosView } from './components/relatorios/RelatoriosView';
 import { ConfiguracoesView } from './components/configuracoes/ConfiguracoesView';
 
-// Public & SuperAdmin
+// Public & SuperAdmin Views
 import { PublicBookingView } from './components/public/PublicBookingView';
+import { AppInstallView } from './components/public/AppInstallView';
 import { SuperAdminView } from './components/superadmin/SuperAdminView';
 
 import { Menu, X, Sparkles } from 'lucide-react';
@@ -37,9 +38,15 @@ export function App() {
   const { currentView } = useApp();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Standalone Public Booking Route
+  // Standalone Public Routes:
+  // 1. Employee / Company Public Booking Page (LINK 2)
   if (currentView === 'agendamentoPublico') {
     return <PublicBookingView />;
+  }
+
+  // 2. Buyer App Installation & Key Activation Page (LINK 1)
+  if (currentView === 'instalacaoApp') {
+    return <AppInstallView />;
   }
 
   const renderView = () => {
@@ -98,19 +105,18 @@ export function App() {
       </div>
 
       {/* Desktop Sidebar & Mobile Drawer Overlay */}
-      <div className={`fixed inset-0 z-50 lg:relative lg:z-auto flex ${mobileMenuOpen ? 'block' : 'hidden lg:flex'}`}>
-        <div 
-          onClick={() => setMobileMenuOpen(false)} 
-          className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs lg:hidden"
-        />
-
-        <div className="relative z-10 w-72 max-w-[85vw] lg:max-w-none h-[100dvh]">
+      <div className={`fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-xs lg:static lg:z-auto transition-opacity ${
+        mobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none lg:opacity-100 lg:pointer-events-auto'
+      }`}>
+        <div className={`w-72 h-[100dvh] max-h-screen bg-slate-900 text-white border-r border-slate-800 flex flex-col transition-transform duration-300 ${
+          mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        }`}>
           <Sidebar onItemClick={() => setMobileMenuOpen(false)} />
         </div>
       </div>
 
-      {/* Main Workspace Area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
         <Navbar />
 
         <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto space-y-6">
@@ -118,14 +124,26 @@ export function App() {
         </main>
       </div>
 
-      {/* Global Application Modals, PWA Install & Toast Banners */}
-      <ImageUploaderModal />
-      <WhatsAppModal />
-      <ReceiptModal />
-      <BudgetModal />
+      {/* License Expiration Emergency Modal Protection */}
       <LicenseExpiredLockModal />
+
+      {/* New Appointment Pop-up Toast Notification */}
       <NewAppointmentToastModal />
+
+      {/* Floating 1-Click PWA App Installation Button */}
       <PwaInstallModal />
+
+      {/* Global Image Uploader Modal */}
+      <ImageUploaderModal />
+
+      {/* Global WhatsApp Direct Dispatch Modal */}
+      <WhatsAppModal />
+
+      {/* Printable Receipt Modal */}
+      <ReceiptModal />
+
+      {/* Budget / Quotation Modal */}
+      <BudgetModal />
     </div>
   );
 }
