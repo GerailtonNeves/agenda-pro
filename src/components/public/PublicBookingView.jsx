@@ -39,7 +39,7 @@ export const PublicBookingView = () => {
     ? empresas.find(e => e.slug === publicBookingSlug) || activeEmpresa 
     : activeEmpresa) || empresas[0];
 
-  // STRICT FILTERING: Show ONLY professionals and services that belong to THIS specific company (No Fake Demo Data)
+  // STRICT REAL DATA FILTERING: Show ONLY professionals and services registered by the user for THIS company
   const staff = (todosFuncionarios || []).filter(f => f.empresaId === empresa.id);
   const displayServicos = (todosServicos || []).filter(s => s.empresaId === empresa.id);
 
@@ -102,47 +102,47 @@ export const PublicBookingView = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-16 selection:bg-cyan-500 selection:text-white">
+    <div className="min-h-screen bg-gradient-to-br from-sky-50 via-cyan-50 to-blue-100 text-slate-950 font-sans pb-16 selection:bg-sky-500 selection:text-white">
       {/* Top Header Navigation (Only Shows Admin Return Button if SuperAdmin) */}
       {userRole === 'superadmin' && (
-        <div className="bg-slate-900 border-b border-slate-800 px-6 py-3 sticky top-0 z-40 flex items-center justify-between text-xs shadow-md">
+        <div className="bg-white/90 backdrop-blur-md border-b border-sky-200 px-6 py-3 sticky top-0 z-40 flex items-center justify-between text-xs shadow-xs">
           <button
             onClick={() => setCurrentView('dashboard')}
-            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-cyan-300 font-black rounded-xl transition flex items-center gap-2 border border-slate-700 shadow-xs"
+            className="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white font-black rounded-xl transition flex items-center gap-2 shadow-xs"
           >
-            <ArrowLeft className="w-4 h-4 text-sky-300" /> Voltar ao Painel Admin
+            <ArrowLeft className="w-4 h-4 text-white" /> Voltar ao Painel Admin
           </button>
 
-          <span className="text-slate-300 font-mono font-bold hidden sm:inline">
+          <span className="text-sky-950 font-mono font-bold hidden sm:inline">
             Página Pública de Agendamento • {empresa.nome}
           </span>
         </div>
       )}
 
       <div className="max-w-4xl mx-auto px-4 pt-6 space-y-8">
-        {/* Main Company Header Banner (100% Real Registered Company Data) */}
-        <div className="relative rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-r from-slate-900 via-sky-950 to-slate-900 border border-slate-800 text-white p-6 md:p-8 group">
+        {/* Main Company Header Banner - Beautiful Light Blue Theme */}
+        <div className="relative rounded-3xl overflow-hidden shadow-xl bg-gradient-to-r from-sky-600 via-sky-700 to-cyan-700 border-2 border-sky-400 text-white p-6 md:p-8 group">
           <div className="relative z-10 flex flex-col md:flex-row items-center md:items-start gap-6 text-center md:text-left">
-            <div className="w-24 h-24 md:w-28 md:h-28 rounded-3xl overflow-hidden border-4 border-sky-300 shadow-2xl bg-slate-900 flex-shrink-0">
+            <div className="w-24 h-24 md:w-28 md:h-28 rounded-3xl overflow-hidden border-4 border-white shadow-2xl bg-white flex-shrink-0">
               <img src={empresa.logo} alt={empresa.nome} className="w-full h-full object-cover" />
             </div>
 
             <div className="space-y-2 flex-1">
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
-                <span className="px-3.5 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-sky-400 text-slate-950 shadow-md">
+                <span className="px-3.5 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-white text-sky-900 shadow-sm">
                   {empresa.segmento || 'Serviços'}
                 </span>
-                <span className="px-3.5 py-1 rounded-full text-xs font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" /> Agendamento Online Oficial
+                <span className="px-3.5 py-1 rounded-full text-xs font-extrabold bg-sky-900/40 text-sky-100 border border-sky-300/40 flex items-center gap-1">
+                  <ShieldCheck className="w-4 h-4 text-emerald-300" /> Agendamento Online Oficial
                 </span>
               </div>
 
               <h1 className="text-3xl md:text-4xl font-black tracking-tight text-white">{empresa.nome}</h1>
-              <p className="text-xs md:text-sm text-slate-300 font-medium max-w-2xl">{empresa.descricao || 'Agende seu horário online em poucos segundos.'}</p>
+              <p className="text-xs md:text-sm text-sky-100 font-medium max-w-2xl">{empresa.descricao || 'Agende seu horário online de forma rápida e segura.'}</p>
 
-              <div className="pt-2 flex flex-wrap items-center justify-center md:justify-start gap-4 text-xs font-extrabold text-slate-300">
-                {empresa.endereco && <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4 text-sky-300" /> {empresa.endereco} {empresa.cidade ? `- ${empresa.cidade}/${empresa.estado}` : ''}</span>}
-                {(empresa.whatsapp || empresa.telefone) && <span className="flex items-center gap-1.5"><Phone className="w-4 h-4 text-emerald-400" /> {empresa.whatsapp || empresa.telefone}</span>}
+              <div className="pt-2 flex flex-wrap items-center justify-center md:justify-start gap-4 text-xs font-extrabold text-sky-100">
+                {empresa.endereco && <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4 text-sky-200" /> {empresa.endereco} {empresa.cidade ? `- ${empresa.cidade}/${empresa.estado}` : ''}</span>}
+                {(empresa.whatsapp || empresa.telefone) && <span className="flex items-center gap-1.5"><Phone className="w-4 h-4 text-emerald-300" /> {empresa.whatsapp || empresa.telefone}</span>}
               </div>
             </div>
           </div>
@@ -150,8 +150,8 @@ export const PublicBookingView = () => {
 
         {/* DEDICATED PROFESSIONAL BANNER (WHEN LINK DE PROFISSIONAL É ACESSADO) */}
         {preSelectedFunc && (
-          <div className="p-6 rounded-3xl bg-gradient-to-r from-sky-900 via-cyan-900 to-slate-900 border-2 border-sky-400 text-white shadow-2xl flex flex-col md:flex-row items-center gap-5 animate-scaleUp">
-            <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-white shadow-xl flex-shrink-0">
+          <div className="p-6 rounded-3xl bg-white border-2 border-sky-400 text-slate-950 shadow-xl flex flex-col md:flex-row items-center gap-5 animate-scaleUp">
+            <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-sky-400 shadow-md flex-shrink-0">
               <img src={preSelectedFunc.foto} alt={preSelectedFunc.nome} className="w-full h-full object-cover" />
             </div>
 
@@ -161,29 +161,29 @@ export const PublicBookingView = () => {
                   <Sparkles className="w-3.5 h-3.5" /> Agenda Direta do Profissional
                 </span>
               </div>
-              <h2 className="text-2xl font-black text-white">{preSelectedFunc.nome}</h2>
-              <p className="text-xs text-sky-200 font-bold">{preSelectedFunc.cargo} • {preSelectedFunc.descricao || 'Atendimento com excelência'}</p>
+              <h2 className="text-2xl font-black text-slate-950">{preSelectedFunc.nome}</h2>
+              <p className="text-xs text-sky-800 font-bold">{preSelectedFunc.cargo} • {preSelectedFunc.descricao || 'Atendimento com excelência'}</p>
               
-              <div className="flex items-center justify-center md:justify-start gap-2 text-xs font-bold text-amber-300 pt-1">
-                <Star className="w-4 h-4 fill-amber-300 text-amber-300" /> 
+              <div className="flex items-center justify-center md:justify-start gap-2 text-xs font-bold text-amber-600 pt-1">
+                <Star className="w-4 h-4 fill-amber-400 text-amber-400" /> 
                 <span>{preSelectedFunc.notaMedia || 5.0} ({preSelectedFunc.avaliacoesCount || 48} avaliações)</span>
               </div>
             </div>
           </div>
         )}
 
-        {/* BOOKING STEP-BY-STEP FORM */}
+        {/* BOOKING STEP-BY-STEP FORM (LIGHT BLUE THEMING) */}
         {!confirmedBooking ? (
-          <form onSubmit={handleBook} className="bg-slate-900 rounded-3xl p-6 md:p-8 border border-slate-800 shadow-2xl space-y-8">
-            {/* Step 1: Select Service (STRICT REAL SERVICES ONLY - NO DEMO DATA) */}
+          <form onSubmit={handleBook} className="bg-white rounded-3xl p-6 md:p-8 border-2 border-sky-200 shadow-xl space-y-8 text-slate-950">
+            {/* Step 1: Select Service (STRICT REAL SERVICES ONLY) */}
             <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                <h3 className="text-xl font-black text-white flex items-center gap-2">
-                  <Scissors className="w-6 h-6 text-sky-400" /> 1. Escolha o Serviço ({displayServicos.length})
+              <div className="flex items-center justify-between border-b border-sky-100 pb-3">
+                <h3 className="text-xl font-black text-sky-950 flex items-center gap-2">
+                  <Scissors className="w-6 h-6 text-sky-600" /> 1. Escolha o Serviço ({displayServicos.length})
                 </h3>
                 {displayServicos.length > 0 && (
-                  <span className="text-[11px] font-extrabold text-sky-400 flex items-center gap-1 bg-sky-950/60 px-2.5 py-1 rounded-full border border-sky-800 sm:hidden">
-                    <MoveHorizontal className="w-3.5 h-3.5 animate-pulse" /> Arraste para o lado ➔
+                  <span className="text-[11px] font-extrabold text-sky-700 flex items-center gap-1 bg-sky-100 px-2.5 py-1 rounded-full border border-sky-200 sm:hidden">
+                    <MoveHorizontal className="w-3.5 h-3.5 animate-pulse text-sky-600" /> Arraste para os lados ➔
                   </span>
                 )}
               </div>
@@ -199,21 +199,21 @@ export const PublicBookingView = () => {
                           onClick={() => setSelectedServico(s)}
                           className={`p-4 rounded-2xl border-2 transition cursor-pointer flex items-center justify-between gap-4 ${
                             isSelected 
-                              ? 'bg-sky-500/20 border-sky-400 shadow-lg scale-[1.01]' 
-                              : 'bg-slate-950 border-slate-800 hover:border-slate-700'
+                              ? 'bg-sky-50 border-sky-500 shadow-md ring-2 ring-sky-400 scale-[1.01]' 
+                              : 'bg-slate-50 border-slate-200 hover:border-sky-300'
                           }`}
                         >
                           <div className="space-y-1">
-                            <h4 className="font-black text-base text-white">{s.nome}</h4>
-                            <p className="text-xs text-slate-400 font-medium line-clamp-1">{s.descricao || 'Atendimento de alta qualidade'}</p>
-                            <span className="text-xs text-sky-300 font-bold block">⏱️ {s.duracaoMinutos || 30} Minutos</span>
+                            <h4 className="font-black text-base text-slate-950">{s.nome}</h4>
+                            <p className="text-xs text-slate-600 font-medium line-clamp-1">{s.descricao || 'Atendimento de alta qualidade'}</p>
+                            <span className="text-xs text-sky-700 font-bold block">⏱️ {s.duracaoMinutos || 30} Minutos</span>
                           </div>
 
                           <div className="text-right flex-shrink-0">
-                            <span className="text-xl font-black text-emerald-400 block">R$ {Number(s.preco || 0).toFixed(2)}</span>
+                            <span className="text-xl font-black text-emerald-600 block">R$ {Number(s.preco || 0).toFixed(2)}</span>
                             {isSelected && (
-                              <span className="inline-flex items-center gap-1 text-[11px] font-black text-sky-300 uppercase mt-1">
-                                <CheckCircle2 className="w-4 h-4 text-sky-400" /> Selecionado
+                              <span className="inline-flex items-center gap-1 text-[11px] font-black text-sky-700 uppercase mt-1">
+                                <CheckCircle2 className="w-4 h-4 text-sky-600" /> Selecionado
                               </span>
                             )}
                           </div>
@@ -223,11 +223,11 @@ export const PublicBookingView = () => {
                   </div>
                 </div>
               ) : (
-                <div className="p-8 rounded-3xl bg-slate-950 border border-slate-800 text-center space-y-2">
-                  <Scissors className="w-8 h-8 text-slate-500 mx-auto" />
-                  <h4 className="text-base font-black text-white">Nenhum Serviço Cadastrado</h4>
-                  <p className="text-xs text-slate-400 max-w-sm mx-auto font-medium">
-                    Esta empresa ainda não cadastrou os seus serviços. Acesse o <b>Painel Admin ➔ Serviços</b> para adicionar seus valores e opções!
+                <div className="p-8 rounded-3xl bg-sky-50/50 border-2 border-dashed border-sky-200 text-center space-y-2">
+                  <Scissors className="w-8 h-8 text-sky-400 mx-auto" />
+                  <h4 className="text-base font-black text-sky-950">Nenhum Serviço Cadastrado</h4>
+                  <p className="text-xs text-slate-600 max-w-sm mx-auto font-medium">
+                    Esta empresa ainda não cadastrou os seus serviços. Acesse o <b>Painel Admin ➔ Serviços</b> para adicionar seus valores!
                   </p>
                 </div>
               )}
@@ -235,13 +235,13 @@ export const PublicBookingView = () => {
 
             {/* Step 2: Select Professional */}
             <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                <h3 className="text-xl font-black text-white flex items-center gap-2">
-                  <User className="w-6 h-6 text-indigo-400" /> 2. Escolha o Profissional ({staff.length})
+              <div className="flex items-center justify-between border-b border-sky-100 pb-3">
+                <h3 className="text-xl font-black text-sky-950 flex items-center gap-2">
+                  <User className="w-6 h-6 text-sky-600" /> 2. Escolha o Profissional ({staff.length})
                 </h3>
                 {staff.length > 0 && (
-                  <span className="text-[11px] font-extrabold text-indigo-400 flex items-center gap-1 bg-indigo-950/60 px-2.5 py-1 rounded-full border border-indigo-800 sm:hidden">
-                    <MoveHorizontal className="w-3.5 h-3.5 animate-pulse" /> Arraste para o lado ➔
+                  <span className="text-[11px] font-extrabold text-sky-700 flex items-center gap-1 bg-sky-100 px-2.5 py-1 rounded-full border border-sky-200 sm:hidden">
+                    <MoveHorizontal className="w-3.5 h-3.5 animate-pulse text-sky-600" /> Arraste para os lados ➔
                   </span>
                 )}
               </div>
@@ -259,11 +259,11 @@ export const PublicBookingView = () => {
                           onClick={() => setSelectedFunc(f)}
                           className={`p-4 rounded-2xl border-2 transition cursor-pointer flex items-center gap-3.5 ${
                             isSelected 
-                              ? 'bg-indigo-500/20 border-indigo-400 shadow-lg scale-[1.01]' 
-                              : 'bg-slate-950 border-slate-800 hover:border-slate-700'
+                              ? 'bg-sky-50 border-sky-500 shadow-md ring-2 ring-sky-400 scale-[1.01]' 
+                              : 'bg-slate-50 border-slate-200 hover:border-sky-300'
                           }`}
                         >
-                          <img src={f.foto} alt={f.nome} className="w-14 h-14 rounded-2xl object-cover border border-slate-700" />
+                          <img src={f.foto} alt={f.nome} className="w-14 h-14 rounded-2xl object-cover border border-slate-300" />
                           
                           <div className="space-y-0.5 min-w-0 flex-1">
                             {isPre && (
@@ -271,8 +271,8 @@ export const PublicBookingView = () => {
                                 Link do Profissional
                               </span>
                             )}
-                            <h4 className="font-black text-sm text-white truncate">{f.nome}</h4>
-                            <p className="text-xs text-indigo-300 font-bold truncate">{f.cargo}</p>
+                            <h4 className="font-black text-sm text-slate-950 truncate">{f.nome}</h4>
+                            <p className="text-xs text-sky-700 font-bold truncate">{f.cargo}</p>
                           </div>
                         </div>
                       );
@@ -280,10 +280,10 @@ export const PublicBookingView = () => {
                   </div>
                 </div>
               ) : (
-                <div className="p-8 rounded-3xl bg-slate-950 border border-slate-800 text-center space-y-2">
-                  <User className="w-8 h-8 text-slate-500 mx-auto" />
-                  <h4 className="text-base font-black text-white">Nenhum Profissional Cadastrado</h4>
-                  <p className="text-xs text-slate-400 max-w-sm mx-auto font-medium">
+                <div className="p-8 rounded-3xl bg-sky-50/50 border-2 border-dashed border-sky-200 text-center space-y-2">
+                  <User className="w-8 h-8 text-sky-400 mx-auto" />
+                  <h4 className="text-base font-black text-sky-950">Nenhum Profissional Cadastrado</h4>
+                  <p className="text-xs text-slate-600 max-w-sm mx-auto font-medium">
                     Cadastre a sua equipe em <b>Painel Admin ➔ Equipe & Profissionais</b>.
                   </p>
                 </div>
@@ -292,24 +292,24 @@ export const PublicBookingView = () => {
 
             {/* Step 3: Select Date & Time */}
             <div className="space-y-4">
-              <h3 className="text-xl font-black text-white flex items-center gap-2 border-b border-slate-800 pb-3">
-                <CalendarIcon className="w-6 h-6 text-amber-400" /> 3. Data & Horário
+              <h3 className="text-xl font-black text-sky-950 flex items-center gap-2 border-b border-sky-100 pb-3">
+                <CalendarIcon className="w-6 h-6 text-sky-600" /> 3. Data & Horário
               </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-black uppercase text-slate-400 mb-1.5">Data do Atendimento</label>
+                  <label className="block text-xs font-black uppercase text-slate-700 mb-1.5">Data do Atendimento</label>
                   <input
                     type="date"
                     value={selectedDate}
                     min={new Date().toISOString().split('T')[0]}
                     onChange={(e) => setSelectedDate(e.target.value)}
-                    className="w-full p-3.5 rounded-2xl bg-slate-950 border border-slate-800 text-white font-bold text-sm outline-none focus:ring-2 focus:ring-sky-500"
+                    className="w-full p-3.5 rounded-2xl bg-slate-50 border-2 border-sky-200 text-slate-950 font-bold text-sm outline-none focus:ring-2 focus:ring-sky-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black uppercase text-slate-400 mb-1.5">Horários Disponíveis</label>
+                  <label className="block text-xs font-black uppercase text-slate-700 mb-1.5">Horários Disponíveis</label>
                   <div className="w-full overflow-x-auto touch-pan-x scrollbar-thin pb-2">
                     <div className="grid grid-cols-5 gap-2 min-w-[320px]">
                       {availableHours.map(h => (
@@ -319,8 +319,8 @@ export const PublicBookingView = () => {
                           onClick={() => setSelectedHorario(h)}
                           className={`py-2 rounded-xl text-xs font-black transition border ${
                             selectedHorario === h 
-                              ? 'bg-emerald-500 text-white border-emerald-400 shadow-md scale-105' 
-                              : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-slate-700'
+                              ? 'bg-sky-600 text-white border-sky-600 shadow-md scale-105' 
+                              : 'bg-slate-50 text-slate-800 border-slate-200 hover:border-sky-300'
                           }`}
                         >
                           {h}
@@ -334,44 +334,44 @@ export const PublicBookingView = () => {
 
             {/* Step 4: Client Identification */}
             <div className="space-y-4">
-              <h3 className="text-xl font-black text-white flex items-center gap-2 border-b border-slate-800 pb-3">
-                <Globe className="w-6 h-6 text-emerald-400" /> 4. Seus Dados de Contato
+              <h3 className="text-xl font-black text-sky-950 flex items-center gap-2 border-b border-sky-100 pb-3">
+                <Globe className="w-6 h-6 text-sky-600" /> 4. Seus Dados de Contato
               </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-black uppercase text-slate-400 mb-1.5">Seu Nome Completo *</label>
+                  <label className="block text-xs font-black uppercase text-slate-700 mb-1.5">Seu Nome Completo *</label>
                   <input
                     type="text"
                     required
                     placeholder="Digite seu nome"
                     value={clienteNome}
                     onChange={(e) => setClienteNome(e.target.value)}
-                    className="w-full p-3.5 rounded-2xl bg-slate-950 border border-slate-800 text-white font-bold text-sm outline-none focus:ring-2 focus:ring-sky-500"
+                    className="w-full p-3.5 rounded-2xl bg-slate-50 border-2 border-sky-200 text-slate-950 font-bold text-sm outline-none focus:ring-2 focus:ring-sky-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black uppercase text-slate-400 mb-1.5">Seu WhatsApp *</label>
+                  <label className="block text-xs font-black uppercase text-slate-700 mb-1.5">Seu WhatsApp *</label>
                   <input
                     type="text"
                     required
                     placeholder="(11) 99999-8888"
                     value={clienteTelefone}
                     onChange={(e) => setClienteTelefone(e.target.value)}
-                    className="w-full p-3.5 rounded-2xl bg-slate-950 border border-slate-800 text-white font-bold text-sm outline-none focus:ring-2 focus:ring-sky-500"
+                    className="w-full p-3.5 rounded-2xl bg-slate-50 border-2 border-sky-200 text-slate-950 font-bold text-sm outline-none focus:ring-2 focus:ring-sky-500"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-black uppercase text-slate-400 mb-1.5">Observações Adicionais (Opcional)</label>
+                <label className="block text-xs font-black uppercase text-slate-700 mb-1.5">Observações Adicionais (Opcional)</label>
                 <input
                   type="text"
                   placeholder="Ex: Prefiro atendimento silencioso, alergia..."
                   value={observacoes}
                   onChange={(e) => setObservacoes(e.target.value)}
-                  className="w-full p-3.5 rounded-2xl bg-slate-950 border border-slate-800 text-white font-bold text-sm outline-none focus:ring-2 focus:ring-sky-500"
+                  className="w-full p-3.5 rounded-2xl bg-slate-50 border-2 border-sky-200 text-slate-950 font-bold text-sm outline-none focus:ring-2 focus:ring-sky-500"
                 />
               </div>
             </div>
@@ -380,55 +380,55 @@ export const PublicBookingView = () => {
             <button
               type="submit"
               disabled={displayServicos.length === 0 || staff.length === 0}
-              className="w-full py-4 px-6 bg-gradient-to-r from-sky-500 via-cyan-500 to-emerald-500 hover:from-sky-600 hover:to-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-black text-base md:text-lg rounded-2xl shadow-2xl transition transform hover:scale-[1.01] uppercase tracking-wider flex items-center justify-center gap-2"
+              className="w-full py-4 px-6 bg-gradient-to-r from-sky-600 via-cyan-600 to-blue-600 hover:from-sky-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black text-base md:text-lg rounded-2xl shadow-xl transition transform hover:scale-[1.01] uppercase tracking-wider flex items-center justify-center gap-2"
             >
-              <CheckCircle2 className="w-6 h-6 text-slate-950" /> Confirmar Agendamento Agora
+              <CheckCircle2 className="w-6 h-6 text-white" /> Confirmar Agendamento Agora
             </button>
           </form>
         ) : (
           /* Confirmation Success Screen */
-          <div className="bg-slate-900 rounded-3xl p-8 border-2 border-emerald-500 text-center space-y-6 animate-scaleUp shadow-2xl">
-            <div className="w-20 h-20 rounded-full bg-emerald-500/20 text-emerald-400 border-2 border-emerald-500 flex items-center justify-center mx-auto shadow-lg">
+          <div className="bg-white rounded-3xl p-8 border-2 border-emerald-500 text-center space-y-6 animate-scaleUp shadow-2xl text-slate-950">
+            <div className="w-20 h-20 rounded-full bg-emerald-100 text-emerald-600 border-2 border-emerald-500 flex items-center justify-center mx-auto shadow-lg">
               <CheckCircle2 className="w-12 h-12" />
             </div>
 
             <div className="space-y-2">
-              <span className="px-3 py-1 bg-emerald-500 text-slate-950 rounded-full text-xs font-black uppercase">
+              <span className="px-3 py-1 bg-emerald-500 text-white rounded-full text-xs font-black uppercase">
                 Agendamento Confirmado!
               </span>
-              <h2 className="text-3xl font-black text-white">Obrigado, {confirmedBooking.clienteNome}!</h2>
-              <p className="text-sm text-slate-300 font-medium max-w-md mx-auto">
-                Seu agendamento foi registrado com sucesso na empresa <b className="text-sky-300">{empresa.nome}</b> com o profissional <b className="text-sky-300">{confirmedBooking.funcionarioNome}</b>.
+              <h2 className="text-3xl font-black text-slate-950">Obrigado, {confirmedBooking.clienteNome}!</h2>
+              <p className="text-sm text-slate-600 font-medium max-w-md mx-auto">
+                Seu agendamento foi registrado com sucesso na empresa <b className="text-sky-800">{empresa.nome}</b> com o profissional <b className="text-sky-800">{confirmedBooking.funcionarioNome}</b>.
               </p>
             </div>
 
-            <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 max-w-md mx-auto text-left space-y-2 text-xs font-bold text-slate-300">
-              <div className="flex justify-between border-b border-slate-800 pb-2">
+            <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 max-w-md mx-auto text-left space-y-2 text-xs font-bold text-slate-700">
+              <div className="flex justify-between border-b border-slate-200 pb-2">
                 <span>Empresa:</span>
-                <span className="text-white font-black">{empresa.nome}</span>
+                <span className="text-slate-950 font-black">{empresa.nome}</span>
               </div>
-              <div className="flex justify-between border-b border-slate-800 pb-2">
+              <div className="flex justify-between border-b border-slate-200 pb-2">
                 <span>Serviço:</span>
-                <span className="text-white font-black">{confirmedBooking.servicoNome}</span>
+                <span className="text-slate-950 font-black">{confirmedBooking.servicoNome}</span>
               </div>
-              <div className="flex justify-between border-b border-slate-800 pb-2">
+              <div className="flex justify-between border-b border-slate-200 pb-2">
                 <span>Profissional:</span>
-                <span className="text-white font-black">{confirmedBooking.funcionarioNome}</span>
+                <span className="text-slate-950 font-black">{confirmedBooking.funcionarioNome}</span>
               </div>
-              <div className="flex justify-between border-b border-slate-800 pb-2">
+              <div className="flex justify-between border-b border-slate-200 pb-2">
                 <span>Data & Horário:</span>
-                <span className="text-emerald-400 font-black">{confirmedBooking.data} às {confirmedBooking.horario}</span>
+                <span className="text-emerald-700 font-black">{confirmedBooking.data} às {confirmedBooking.horario}</span>
               </div>
               <div className="flex justify-between pt-1 text-sm font-black">
                 <span>Valor Total:</span>
-                <span className="text-sky-400">R$ {confirmedBooking.valor.toFixed(2)}</span>
+                <span className="text-sky-700">R$ {confirmedBooking.valor.toFixed(2)}</span>
               </div>
             </div>
 
             <div className="pt-2 flex flex-col sm:flex-row gap-3 justify-center max-w-md mx-auto">
               <button
                 onClick={() => setConfirmedBooking(null)}
-                className="py-3.5 px-6 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white font-black text-xs transition"
+                className="py-3.5 px-6 rounded-2xl bg-sky-600 hover:bg-sky-700 text-white font-black text-xs transition shadow-md"
               >
                 Fazer Novo Agendamento
               </button>
