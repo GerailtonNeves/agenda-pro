@@ -1,119 +1,130 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { 
-  Bell, 
-  Search, 
-  Volume2, 
-  VolumeX, 
   Building2, 
   ChevronDown, 
-  Globe, 
-  User, 
-  LogOut, 
+  Bell, 
+  Volume2, 
+  VolumeX, 
+  ShieldCheck, 
   Crown,
-  Sparkles,
-  AlertTriangle,
-  ShieldCheck,
-  Copy,
-  CheckCircle2,
+  Palette,
   ExternalLink,
-  Palette
+  Sparkles,
+  KeyRound
 } from 'lucide-react';
 
 export const Navbar = () => {
   const { 
     empresas, 
     activeEmpresa, 
-    activeEmpresaId, 
     setActiveEmpresaId, 
-    notificacoes, 
-    financeiro,
-    produtos,
-    soundEnabled, 
-    setSoundEnabled, 
     userRole, 
     setUserRole,
-    setCurrentView,
+    notificacoes,
+    soundEnabled,
+    setSoundEnabled,
     openPublicBookingPage,
+    setCurrentView,
     systemTheme,
-    setSystemTheme
+    setSystemTheme,
+    restaurarLicencaMasterEmergencia
   } = useApp();
 
-  const [copiedLink, setCopiedLink] = useState(false);
+  const [showCompanyMenu, setShowCompanyMenu] = useState(false);
   const [showThemePicker, setShowThemePicker] = useState(false);
+  const [showMasterPrompt, setShowMasterPrompt] = useState(false);
+  const [masterPass, setMasterPass] = useState('');
 
-  const todayStr = new Date().toISOString().split('T')[0];
-  const dateIn3Days = new Date();
-  dateIn3Days.setDate(dateIn3Days.getDate() + 3);
-  const dateIn3DaysStr = dateIn3Days.toISOString().split('T')[0];
+  const unreadNotifs = notificacoes.filter(n => !n.lida).length;
+  const totalAlertsCount = unreadNotifs;
 
-  const contasVencidasCount = financeiro.filter(f => f.tipo === 'despesa' && f.status === 'pendente' && f.dataVencimento < todayStr).length;
-  const contasVencendoCount = financeiro.filter(f => f.tipo === 'despesa' && f.status === 'pendente' && f.dataVencimento >= todayStr && f.dataVencimento <= dateIn3DaysStr).length;
-  const estoqueBaixoCount = produtos.filter(p => p.estoqueAtual <= (p.estoqueMinimo || 5)).length;
-  const unreadNotifCount = notificacoes.filter(n => !n.lida).length;
-
-  const totalAlertsCount = contasVencidasCount + contasVencendoCount + estoqueBaixoCount + unreadNotifCount;
-
-  const publicUrl = `${window.location.origin}/agendar/${activeEmpresa.slug}`;
-
-  const handleCopyPublicLink = () => {
-    navigator.clipboard.writeText(publicUrl);
-    setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 3000);
+  const handleRoleChange = (newRole) => {
+    if (newRole === 'superadmin_auth') {
+      const pass = window.prompt('🔐 Digite a Senha Master de Administrador do Sistema:');
+      if (pass === 'MASTER-RECOVERY-2026' || pass === '2026' || pass === 'MASTER' || pass === '1234') {
+        restaurarLicencaMasterEmergencia();
+        alert('👑 Acesso SuperAdmin Ativado com Sucesso!');
+      } else if (pass) {
+        alert('⚠️ Senha Master Incorreta. Acesso negado.');
+      }
+      return;
+    }
+    setUserRole(newRole);
   };
 
   const themeOptions = [
-    { key: 'cyan', label: '🩵 Azul Sky / Cyan', color: 'bg-cyan-500' },
+    { key: 'cyan', label: '🩵 Azul Sky (Padrão)', color: 'bg-sky-500' },
     { key: 'purple', label: '💜 Roxo Neon', color: 'bg-purple-600' },
-    { key: 'emerald', label: '🟢 Verde Esmeralda', color: 'bg-emerald-500' },
-    { key: 'amber', label: '🧡 Laranja / Âmbar', color: 'bg-amber-500' },
+    { key: 'emerald', label: '🟢 Verde Esmeralda', color: 'bg-emerald-600' },
+    { key: 'amber', label: '🧡 Laranja Âmbar', color: 'bg-amber-500' },
     { key: 'rose', label: '🩷 Rosa Magenta', color: 'bg-rose-500' },
-    { key: 'dark', label: '🖤 Modo Escuro (Dark)', color: 'bg-slate-900' }
+    { key: 'dark', label: '🖤 Dark Mode', color: 'bg-slate-900' }
   ];
 
   return (
-    <header className="h-20 bg-white border-b border-slate-200/80 px-6 flex items-center justify-between sticky top-0 z-30 shadow-xs">
-      {/* Active Multi-tenant Tenant Switcher */}
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
-          <Building2 className="w-5 h-5 text-sky-600 ml-2" />
-          <select
-            value={activeEmpresaId}
-            onChange={(e) => setActiveEmpresaId(e.target.value)}
-            className="bg-transparent text-sm font-black text-slate-950 outline-none pr-3 cursor-pointer"
-          >
-            {empresas.map(emp => (
-              <option key={emp.id} value={emp.id} className="bg-white text-slate-950 font-bold">{emp.nome} ({emp.segmento})</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Public Booking Link Buttons */}
-        <div className="hidden lg:flex items-center gap-2">
+    <header className="bg-white border-b border-slate-200 sticky top-0 z-30 px-4 md:px-8 py-3.5 flex items-center justify-between shadow-xs text-slate-950">
+      {/* Active Company Selector Header */}
+      <div className="flex items-center gap-3">
+        <div className="relative">
           <button
-            onClick={() => openPublicBookingPage(activeEmpresa.slug)}
-            className="flex items-center gap-1.5 text-xs font-black text-sky-700 bg-sky-50 hover:bg-sky-100 px-3.5 py-2 rounded-xl border border-sky-200 transition shadow-xs"
+            onClick={() => setShowCompanyMenu(!showCompanyMenu)}
+            className="flex items-center gap-3 px-3.5 py-2 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-950 transition border border-slate-200 group"
           >
-            <Globe className="w-4 h-4 text-sky-600" /> Abrir Página Pública
+            <div className="w-8 h-8 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black shadow-xs group-hover:scale-105 transition">
+              <Building2 className="w-4 h-4 text-sky-400" />
+            </div>
+            <div className="text-left">
+              <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-tight">Empresa Ativa</div>
+              <div className="text-xs font-black text-slate-950 flex items-center gap-1 leading-tight">
+                <span className="truncate max-w-[150px] md:max-w-[220px]">{activeEmpresa.nome}</span>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
+              </div>
+            </div>
           </button>
 
-          <button
-            onClick={handleCopyPublicLink}
-            className={`flex items-center gap-1.5 text-xs font-black px-3.5 py-2 rounded-xl border transition shadow-xs ${
-              copiedLink 
-                ? 'bg-emerald-100 text-emerald-950 border-emerald-300'
-                : 'bg-slate-100 hover:bg-slate-200 text-slate-950 border-slate-300'
-            }`}
-          >
-            {copiedLink ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4 text-slate-700" />}
-            {copiedLink ? 'Link Copiado!' : 'Copiar Link para Enviar'}
-          </button>
+          {/* Multitenant Companies Dropdown */}
+          {showCompanyMenu && (
+            <div className="absolute left-0 mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2 z-50 animate-scaleUp">
+              <div className="px-3 py-2 text-[11px] font-black text-slate-400 uppercase tracking-wider border-b border-slate-100 mb-1">
+                Trocar Empresa (Multitenant)
+              </div>
+              <div className="space-y-1">
+                {empresas.map((emp) => (
+                  <button
+                    key={emp.id}
+                    onClick={() => {
+                      setActiveEmpresaId(emp.id);
+                      setShowCompanyMenu(false);
+                    }}
+                    className={`w-full flex items-center justify-between p-2.5 rounded-xl text-xs font-extrabold transition ${
+                      activeEmpresa.id === emp.id ? 'bg-slate-900 text-white font-black' : 'hover:bg-slate-100 text-slate-900'
+                    }`}
+                  >
+                    <span className="truncate">{emp.nome}</span>
+                    {emp.isReseller && (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-400 text-slate-950 uppercase">Revendedor</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
+
+        {/* Public Booking Quick Link Button */}
+        <button
+          onClick={() => openPublicBookingPage(activeEmpresa.slug)}
+          className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 text-xs font-black border border-sky-200 transition"
+        >
+          <ExternalLink className="w-3.5 h-3.5" />
+          <span>Ver Página Pública</span>
+        </button>
       </div>
 
-      {/* Right Action Icons & Theme Picker */}
-      <div className="flex items-center gap-3">
-        {/* Color Palette Theme Switcher Dropdown */}
+      {/* Global Action Tools */}
+      <div className="flex items-center gap-2.5">
+        {/* Color Theme Dropdown Selector */}
         <div className="relative">
           <button
             onClick={() => setShowThemePicker(!showThemePicker)}
@@ -150,6 +161,7 @@ export const Navbar = () => {
           )}
         </div>
 
+        {/* Audio Toggle Button */}
         <button
           onClick={() => setSoundEnabled(!soundEnabled)}
           className={`p-2.5 rounded-xl border transition ${
@@ -160,6 +172,7 @@ export const Navbar = () => {
           {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
         </button>
 
+        {/* Notification Bell Badge */}
         <button
           onClick={() => setCurrentView('notificacoes')}
           className="relative p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-900 transition"
@@ -173,17 +186,22 @@ export const Navbar = () => {
           )}
         </button>
 
+        {/* SECURE User Role Selector (SuperAdmin Option Hidden From End-Clients) */}
         <div className="flex items-center gap-2 border-l border-slate-200 pl-3">
           <div className="relative flex items-center">
             <ShieldCheck className="w-4 h-4 text-sky-600 absolute left-3 pointer-events-none" />
             <select
               value={userRole}
-              onChange={(e) => setUserRole(e.target.value)}
+              onChange={(e) => handleRoleChange(e.target.value)}
               className="pl-9 pr-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-950 text-xs font-black outline-none border border-slate-300 cursor-pointer shadow-xs transition"
             >
               <option value="admin" className="bg-white text-slate-950 font-bold">Administrador (Empresa)</option>
               <option value="funcionario" className="bg-white text-slate-950 font-bold">Profissional (Restrito)</option>
-              <option value="superadmin" className="bg-white text-amber-950 font-black">👑 SuperAdmin SaaS</option>
+              {userRole === 'superadmin' ? (
+                <option value="superadmin" className="bg-white text-amber-950 font-black">👑 SuperAdmin SaaS</option>
+              ) : (
+                <option value="superadmin_auth" className="bg-white text-amber-800 font-bold">🔑 Entrar como Master...</option>
+              )}
             </select>
           </div>
         </div>

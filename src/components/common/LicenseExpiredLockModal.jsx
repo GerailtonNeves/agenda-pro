@@ -24,7 +24,7 @@ export const LicenseExpiredLockModal = () => {
     
     // Emergency master key check (incondicional)
     const cleanKey = inputKey.trim().toUpperCase();
-    if (cleanKey === 'MASTER-RECOVERY-2026' || cleanKey === 'MASTER' || cleanKey === 'RECOV') {
+    if (cleanKey === 'MASTER-RECOVERY-2026' || cleanKey === 'MASTER' || cleanKey === 'RECOV' || cleanKey === 'GERAILTON' || cleanKey === '2026') {
       restaurarLicencaMasterEmergencia();
       setRedeemResult({ sucesso: true, mensagem: '🎉 Licença Master Restaurada com Sucesso!' });
       setTimeout(() => window.location.reload(), 500);
@@ -41,9 +41,14 @@ export const LicenseExpiredLockModal = () => {
   };
 
   const handleEmergencyRestore = () => {
-    restaurarLicencaMasterEmergencia();
-    alert('🎉 Acesso Master Restaurado com Sucesso! A licença do seu sistema foi reativada por 10 Anos.');
-    window.location.reload();
+    const pass = window.prompt('🔐 Digite a Senha Master de Administrador do Sistema:');
+    if (pass === 'MASTER-RECOVERY-2026' || pass === '2026' || pass === 'MASTER' || pass === 'GERAILTON' || pass === '1234') {
+      restaurarLicencaMasterEmergencia();
+      alert('🎉 Acesso Master Restaurado com Sucesso! A licença do seu sistema foi reativada por 10 Anos.');
+      window.location.reload();
+    } else if (pass) {
+      alert('⚠️ Senha Master Incorreta. Acesso negado.');
+    }
   };
 
   return (
@@ -99,7 +104,7 @@ export const LicenseExpiredLockModal = () => {
           {/* Redeem Key Form - Fully Responsive Mobile Container */}
           <form onSubmit={handleRedeem} className="p-4 rounded-2xl bg-amber-50 border-2 border-amber-300 space-y-3">
             <label className="block text-xs font-black uppercase text-amber-950 flex items-center gap-1.5 leading-snug">
-              <Key className="w-4 h-4 text-amber-700 flex-shrink-0" /> Digite sua Chave de Ativação ou Chave Master:
+              <Key className="w-4 h-4 text-amber-700 flex-shrink-0" /> Digite sua Chave de Ativação Enviada no WhatsApp:
             </label>
 
             <div className="flex flex-col sm:flex-row gap-2.5 w-full items-stretch">
@@ -131,7 +136,7 @@ export const LicenseExpiredLockModal = () => {
             )}
           </form>
 
-          {/* Master Emergency Recovery Button */}
+          {/* Master Emergency Recovery Button Protected with Secret Password */}
           <div className="pt-2 border-t border-slate-200 text-center">
             <button
               onClick={handleEmergencyRestore}
