@@ -970,6 +970,7 @@ export const AppProvider = ({ children }) => {
       funcionarios: (funcionarios || []).filter(f => f.empresaId === activeEmpresa.id),
       todosFuncionarios: funcionarios || [],
       servicos: (servicos || []).filter(s => s.empresaId === activeEmpresa.id),
+      todosServicos: servicos || [],
       produtos: (produtos || []).filter(p => p.empresaId === activeEmpresa.id),
       clientes: (clientes || []).filter(c => c.empresaId === activeEmpresa.id),
       agendamentos: (agendamentos || []).filter(a => a.empresaId === activeEmpresa.id),

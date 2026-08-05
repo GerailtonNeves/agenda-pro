@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { 
   Calendar as CalendarIcon, 
@@ -15,14 +15,18 @@ import {
   ShieldCheck,
   ChevronRight,
   MessageSquare,
-  Star
+  Star,
+  MoveHorizontal
 } from 'lucide-react';
 
 export const PublicBookingView = () => {
   const { 
     empresas, 
+    activeEmpresa,
+    activeEmpresaId,
     todosFuncionarios, 
     servicos, 
+    todosServicos,
     addAgendamento, 
     publicBookingSlug, 
     publicEmployeeSlug, 
@@ -31,12 +35,16 @@ export const PublicBookingView = () => {
     userRole
   } = useApp();
 
-  const empresa = empresas.find(e => e.slug === publicBookingSlug) || empresas[0];
-  const staff = todosFuncionarios.filter(f => f.empresaId === empresa.id);
+  // Find exact target company matching slug or active company
+  const empresa = empresas.find(e => e.slug === publicBookingSlug || e.id === activeEmpresaId) || activeEmpresa || empresas[0];
+  const staff = (todosFuncionarios || []).filter(f => f.empresaId === empresa.id);
+  const companyServicos = (todosServicos || []).filter(s => s.empresaId === empresa.id);
+  const displayServicos = companyServicos.length > 0 ? companyServicos : (servicos || []);
+
   const preSelectedFunc = publicEmployeeSlug ? staff.find(f => f.linkPublicoSlug === publicEmployeeSlug) : null;
 
-  const [selectedServico, setSelectedServico] = useState(servicos[0] || null);
-  const [selectedFunc, setSelectedFunc] = useState(preSelectedFunc || staff[0] || null);
+  const [selectedServico, setSelectedServico] = useState(null);
+  const [selectedFunc, setSelectedFunc] = useState(null);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedHorario, setSelectedHorario] = useState('10:00');
   
@@ -45,6 +53,21 @@ export const PublicBookingView = () => {
   const [observacoes, setObservacoes] = useState('');
   
   const [confirmedBooking, setConfirmedBooking] = useState(null);
+
+  // Set default selected service and professional when component mounts or data changes
+  useEffect(() => {
+    if (displayServicos && displayServicos.length > 0 && !selectedServico) {
+      setSelectedServico(displayServicos[0]);
+    }
+  }, [displayServicos]);
+
+  useEffect(() => {
+    if (preSelectedFunc) {
+      setSelectedFunc(preSelectedFunc);
+    } else if (staff && staff.length > 0 && !selectedFunc) {
+      setSelectedFunc(staff[0]);
+    }
+  }, [preSelectedFunc, staff]);
 
   const availableHours = ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
 
@@ -146,84 +169,104 @@ export const PublicBookingView = () => {
         {/* BOOKING STEP-BY-STEP FORM */}
         {!confirmedBooking ? (
           <form onSubmit={handleBook} className="bg-slate-900 rounded-3xl p-6 md:p-8 border border-slate-800 shadow-2xl space-y-8">
-            {/* Step 1: Select Service */}
+            {/* Step 1: Select Service (WITH MOBILE HORIZONTAL SWIPE DRAG TOUCH) */}
             <div className="space-y-4">
-              <h3 className="text-xl font-black text-white flex items-center gap-2 border-b border-slate-800 pb-3">
-                <Scissors className="w-6 h-6 text-sky-400" /> 1. Escolha o Serviço
-              </h3>
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 className="text-xl font-black text-white flex items-center gap-2">
+                  <Scissors className="w-6 h-6 text-sky-400" /> 1. Escolha o Serviço ({displayServicos.length})
+                </h3>
+                <span className="text-[11px] font-extrabold text-sky-400 flex items-center gap-1 bg-sky-950/60 px-2.5 py-1 rounded-full border border-sky-800 sm:hidden">
+                  <MoveHorizontal className="w-3.5 h-3.5 animate-pulse" /> Arraste para o lado ➔
+                </span>
+              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {servicos.map(s => {
-                  const isSelected = selectedServico?.id === s.id;
-                  return (
-                    <div
-                      key={s.id}
-                      onClick={() => setSelectedServico(s)}
-                      className={`p-4 rounded-2xl border-2 transition cursor-pointer flex items-center justify-between gap-4 ${
-                        isSelected 
-                          ? 'bg-sky-500/20 border-sky-400 shadow-lg scale-[1.02]' 
-                          : 'bg-slate-950 border-slate-800 hover:border-slate-700'
-                      }`}
-                    >
-                      <div className="space-y-1">
-                        <h4 className="font-black text-base text-white">{s.nome}</h4>
-                        <p className="text-xs text-slate-400 font-medium line-clamp-1">{s.descricao}</p>
-                        <span className="text-xs text-sky-300 font-bold block">⏱️ {s.duracaoMinutos} Minutos</span>
-                      </div>
+              {displayServicos.length > 0 ? (
+                <div className="w-full overflow-x-auto touch-pan-x scrollbar-thin pb-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 min-w-full md:min-w-0">
+                    {displayServicos.map(s => {
+                      const isSelected = selectedServico?.id === s.id;
+                      return (
+                        <div
+                          key={s.id}
+                          onClick={() => setSelectedServico(s)}
+                          className={`p-4 rounded-2xl border-2 transition cursor-pointer flex items-center justify-between gap-4 ${
+                            isSelected 
+                              ? 'bg-sky-500/20 border-sky-400 shadow-lg scale-[1.01]' 
+                              : 'bg-slate-950 border-slate-800 hover:border-slate-700'
+                          }`}
+                        >
+                          <div className="space-y-1">
+                            <h4 className="font-black text-base text-white">{s.nome}</h4>
+                            <p className="text-xs text-slate-400 font-medium line-clamp-1">{s.descricao || 'Atendimento de alta qualidade'}</p>
+                            <span className="text-xs text-sky-300 font-bold block">⏱️ {s.duracaoMinutos || 30} Minutos</span>
+                          </div>
 
-                      <div className="text-right flex-shrink-0">
-                        <span className="text-xl font-black text-emerald-400 block">R$ {s.preco.toFixed(2)}</span>
-                        {isSelected && (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-black text-sky-300 uppercase mt-1">
-                            <CheckCircle2 className="w-4 h-4 text-sky-400" /> Selecionado
-                          </span>
-                        )}
+                          <div className="text-right flex-shrink-0">
+                            <span className="text-xl font-black text-emerald-400 block">R$ {Number(s.preco || 0).toFixed(2)}</span>
+                            {isSelected && (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-black text-sky-300 uppercase mt-1">
+                                <CheckCircle2 className="w-4 h-4 text-sky-400" /> Selecionado
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="p-6 rounded-2xl bg-slate-950 border border-slate-800 text-center text-slate-400 text-xs font-bold">
+                  Nenhum serviço cadastrado ainda nesta empresa.
+                </div>
+              )}
+            </div>
+
+            {/* Step 2: Select Professional (WITH MOBILE HORIZONTAL SWIPE DRAG TOUCH) */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 className="text-xl font-black text-white flex items-center gap-2">
+                  <User className="w-6 h-6 text-indigo-400" /> 2. Escolha o Profissional ({staff.length})
+                </h3>
+                <span className="text-[11px] font-extrabold text-indigo-400 flex items-center gap-1 bg-indigo-950/60 px-2.5 py-1 rounded-full border border-indigo-800 sm:hidden">
+                  <MoveHorizontal className="w-3.5 h-3.5 animate-pulse" /> Arraste para o lado ➔
+                </span>
+              </div>
+
+              <div className="w-full overflow-x-auto touch-pan-x scrollbar-thin pb-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 min-w-full md:min-w-0">
+                  {staff.map(f => {
+                    const isSelected = selectedFunc?.id === f.id;
+                    const isPre = preSelectedFunc?.id === f.id;
+
+                    return (
+                      <div
+                        key={f.id}
+                        onClick={() => setSelectedFunc(f)}
+                        className={`p-4 rounded-2xl border-2 transition cursor-pointer flex items-center gap-3.5 ${
+                          isSelected 
+                            ? 'bg-indigo-500/20 border-indigo-400 shadow-lg scale-[1.01]' 
+                            : 'bg-slate-950 border-slate-800 hover:border-slate-700'
+                        }`}
+                      >
+                        <img src={f.foto} alt={f.nome} className="w-14 h-14 rounded-2xl object-cover border border-slate-700" />
+                        
+                        <div className="space-y-0.5 min-w-0 flex-1">
+                          {isPre && (
+                            <span className="px-2 py-0.5 rounded text-[9px] font-black bg-amber-400 text-slate-950 uppercase block w-fit">
+                              Link do Profissional
+                            </span>
+                          )}
+                          <h4 className="font-black text-sm text-white truncate">{f.nome}</h4>
+                          <p className="text-xs text-indigo-300 font-bold truncate">{f.cargo}</p>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
-            {/* Step 2: Select Professional */}
-            <div className="space-y-4">
-              <h3 className="text-xl font-black text-white flex items-center gap-2 border-b border-slate-800 pb-3">
-                <User className="w-6 h-6 text-indigo-400" /> 2. Escolha o Profissional
-              </h3>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {staff.map(f => {
-                  const isSelected = selectedFunc?.id === f.id;
-                  const isPre = preSelectedFunc?.id === f.id;
-
-                  return (
-                    <div
-                      key={f.id}
-                      onClick={() => setSelectedFunc(f)}
-                      className={`p-4 rounded-2xl border-2 transition cursor-pointer flex items-center gap-3.5 ${
-                        isSelected 
-                          ? 'bg-indigo-500/20 border-indigo-400 shadow-lg scale-[1.02]' 
-                          : 'bg-slate-950 border-slate-800 hover:border-slate-700'
-                      }`}
-                    >
-                      <img src={f.foto} alt={f.nome} className="w-14 h-14 rounded-2xl object-cover border border-slate-700" />
-                      
-                      <div className="space-y-0.5 min-w-0 flex-1">
-                        {isPre && (
-                          <span className="px-2 py-0.5 rounded text-[9px] font-black bg-amber-400 text-slate-950 uppercase block w-fit">
-                            Link do Profissional
-                          </span>
-                        )}
-                        <h4 className="font-black text-sm text-white truncate">{f.nome}</h4>
-                        <p className="text-xs text-indigo-300 font-bold truncate">{f.cargo}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Step 3: Select Date & Time */}
+            {/* Step 3: Select Date & Time (WITH MOBILE HORIZONTAL SWIPE DRAG TOUCH) */}
             <div className="space-y-4">
               <h3 className="text-xl font-black text-white flex items-center gap-2 border-b border-slate-800 pb-3">
                 <CalendarIcon className="w-6 h-6 text-amber-400" /> 3. Data & Horário
@@ -243,21 +286,25 @@ export const PublicBookingView = () => {
 
                 <div>
                   <label className="block text-xs font-black uppercase text-slate-400 mb-1.5">Horários Disponíveis</label>
-                  <div className="grid grid-cols-5 gap-2">
-                    {availableHours.map(h => (
-                      <button
-                        key={h}
-                        type="button"
-                        onClick={() => setSelectedHorario(h)}
-                        className={`py-2 rounded-xl text-xs font-black transition border ${
-                          selectedHorario === h 
-                            ? 'bg-emerald-500 text-white border-emerald-400 shadow-md scale-105' 
-                            : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-slate-700'
-                        }`}
-                      >
-                        {h}
-                      </button>
-                    ))}
+                  
+                  {/* Swipeable Time Slots Container on Mobile */}
+                  <div className="w-full overflow-x-auto touch-pan-x scrollbar-thin pb-2">
+                    <div className="grid grid-cols-5 gap-2 min-w-[320px]">
+                      {availableHours.map(h => (
+                        <button
+                          key={h}
+                          type="button"
+                          onClick={() => setSelectedHorario(h)}
+                          className={`py-2 rounded-xl text-xs font-black transition border ${
+                            selectedHorario === h 
+                              ? 'bg-emerald-500 text-white border-emerald-400 shadow-md scale-105' 
+                              : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-slate-700'
+                          }`}
+                        >
+                          {h}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -328,11 +375,15 @@ export const PublicBookingView = () => {
               </span>
               <h2 className="text-3xl font-black text-white">Obrigado, {confirmedBooking.clienteNome}!</h2>
               <p className="text-sm text-slate-300 font-medium max-w-md mx-auto">
-                Seu agendamento foi registrado com sucesso na agenda do profissional <b className="text-sky-300">{confirmedBooking.funcionarioNome}</b>.
+                Seu agendamento foi registrado com sucesso na empresa <b className="text-sky-300">{empresa.nome}</b> com o profissional <b className="text-sky-300">{confirmedBooking.funcionarioNome}</b>.
               </p>
             </div>
 
             <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 max-w-md mx-auto text-left space-y-2 text-xs font-bold text-slate-300">
+              <div className="flex justify-between border-b border-slate-800 pb-2">
+                <span>Empresa:</span>
+                <span className="text-white font-black">{empresa.nome}</span>
+              </div>
               <div className="flex justify-between border-b border-slate-800 pb-2">
                 <span>Serviço:</span>
                 <span className="text-white font-black">{confirmedBooking.servicoNome}</span>
