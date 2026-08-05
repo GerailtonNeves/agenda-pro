@@ -103,8 +103,8 @@ export function App() {
           className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs lg:hidden"
         />
 
-        <div className="relative z-10 w-72 max-w-[80vw] lg:max-w-none h-full">
-          <Sidebar />
+        <div className="relative z-10 w-72 max-w-[85vw] lg:max-w-none h-[100dvh]">
+          <Sidebar onItemClick={() => setMobileMenuOpen(false)} />
         </div>
       </div>
 

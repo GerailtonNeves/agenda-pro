@@ -23,8 +23,8 @@ import {
   Palette
 } from 'lucide-react';
 
-export const Sidebar = () => {
-  const { currentView, setCurrentView, activeEmpresa, openPublicBookingPage, userRole, isResellerAuthorized, systemTheme, setSystemTheme } = useApp();
+export const Sidebar = ({ onItemClick }) => {
+  const { currentView, setCurrentView, activeEmpresa, openPublicBookingPage, userRole, isResellerAuthorized, systemTheme } = useApp();
   const [copiedLink, setCopiedLink] = useState(false);
 
   const navItems = [
@@ -53,6 +53,11 @@ export const Sidebar = () => {
     navigator.clipboard.writeText(publicUrl);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 3000);
+  };
+
+  const handleSelectView = (viewId) => {
+    setCurrentView(viewId);
+    if (onItemClick) onItemClick();
   };
 
   // Dynamic Theme Gradients & Accents
@@ -98,27 +103,27 @@ export const Sidebar = () => {
   const currentTheme = themeStyles[systemTheme] || themeStyles.cyan;
 
   return (
-    <aside className={`w-72 ${currentTheme.sidebarBg} flex flex-col flex-shrink-0 min-h-screen shadow-xl transition-colors duration-300`}>
+    <aside className={`w-72 ${currentTheme.sidebarBg} flex flex-col flex-shrink-0 h-[100dvh] max-h-screen shadow-xl transition-colors duration-300 overflow-hidden`}>
       {/* Brand Header */}
-      <div className="p-6 border-b border-black/10 flex items-center justify-between bg-white/40 backdrop-blur-xs">
+      <div className="p-5 border-b border-black/10 flex items-center justify-between bg-white/40 backdrop-blur-xs flex-shrink-0">
         <div className="flex items-center gap-3.5">
-          <div className={`w-12 h-12 rounded-2xl bg-gradient-to-tr ${currentTheme.brandGradient} text-white flex items-center justify-center font-black shadow-md border border-white/20`}>
-            <Sparkles className="w-7 h-7 text-white" />
+          <div className={`w-11 h-11 rounded-2xl bg-gradient-to-tr ${currentTheme.brandGradient} text-white flex items-center justify-center font-black shadow-md border border-white/20`}>
+            <Sparkles className="w-6 h-6 text-white" />
           </div>
           <div>
             <h2 className="font-black text-xl tracking-tight leading-none">
               Agenda<span className="opacity-90">Pro</span>
             </h2>
-            <span className="text-xs font-black uppercase tracking-widest block mt-1 opacity-80">
+            <span className="text-xs font-black uppercase tracking-widest block mt-1 opacity-80 truncate max-w-[140px]">
               {activeEmpresa.nome}
             </span>
           </div>
         </div>
       </div>
 
-      {/* Navigation List */}
-      <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
-        <div className="px-3 py-1.5 text-[11px] font-black uppercase tracking-wider opacity-70">
+      {/* Navigation List - Full Mobile Touch Scrollable */}
+      <nav className="flex-1 p-3 space-y-1 overflow-y-auto min-h-0 scrollbar-thin">
+        <div className="px-3 py-1 text-[11px] font-black uppercase tracking-wider opacity-70">
           Menu Principal
         </div>
 
@@ -129,8 +134,8 @@ export const Sidebar = () => {
           return (
             <button
               key={item.id}
-              onClick={() => setCurrentView(item.id)}
-              className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-extrabold transition-all group ${
+              onClick={() => handleSelectView(item.id)}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs md:text-sm font-extrabold transition-all group ${
                 isActive
                   ? currentTheme.activeItem
                   : item.super 
@@ -138,7 +143,7 @@ export const Sidebar = () => {
                   : 'text-slate-800 hover:bg-black/5'
               }`}
             >
-              <div className="flex items-center gap-3.5">
+              <div className="flex items-center gap-3">
                 <div className={`p-1.5 rounded-xl transition-transform group-hover:scale-110 ${
                   isActive ? 'bg-white/20 text-white' : 'bg-white shadow-xs border border-black/10'
                 }`}>
@@ -146,11 +151,11 @@ export const Sidebar = () => {
                     isActive ? 'text-white' : item.color
                   }`} />
                 </div>
-                <span>{item.label}</span>
+                <span className="truncate">{item.label}</span>
               </div>
 
               {item.badge && (
-                <span className={`px-2 py-0.5 rounded-md text-xs font-black ${
+                <span className={`px-2 py-0.5 rounded-md text-[11px] font-black ${
                   isActive ? 'bg-white/20 text-white' : 'bg-black/10 text-slate-900'
                 }`}>
                   {item.badge}
@@ -162,27 +167,30 @@ export const Sidebar = () => {
       </nav>
 
       {/* Bottom Public Link Footer Box */}
-      <div className="p-4 border-t border-black/10 bg-white/40">
-        <div className="p-4 rounded-2xl bg-white/80 border border-black/10 text-center space-y-2">
-          <p className="text-xs font-black text-slate-900">Link Público de Agendamento</p>
-          <p className="text-xs font-mono font-bold truncate bg-white p-2 rounded-xl border border-black/10 text-slate-950">{publicUrl}</p>
+      <div className="p-3 border-t border-black/10 bg-white/40 flex-shrink-0">
+        <div className="p-3 rounded-2xl bg-white/80 border border-black/10 text-center space-y-1.5">
+          <p className="text-[11px] font-black text-slate-900">Link Público de Agendamento</p>
+          <p className="text-[11px] font-mono font-bold truncate bg-white p-1.5 rounded-xl border border-black/10 text-slate-950">{publicUrl}</p>
           
-          <div className="grid grid-cols-2 gap-2 pt-1">
+          <div className="grid grid-cols-2 gap-1.5 pt-0.5">
             <button
               onClick={handleCopyLink}
-              className={`py-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 border shadow-xs ${
+              className={`py-1.5 rounded-xl text-[11px] font-black transition flex items-center justify-center gap-1 border shadow-xs ${
                 copiedLink ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-slate-950 hover:bg-slate-800 text-white border-slate-800'
               }`}
             >
-              {copiedLink ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+              {copiedLink ? <CheckCircle2 className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
               {copiedLink ? 'Copiado!' : 'Copiar'}
             </button>
 
             <button
-              onClick={() => openPublicBookingPage(activeEmpresa.slug)}
-              className={`py-2 rounded-xl ${currentTheme.buttonPrimary} text-xs font-black transition flex items-center justify-center gap-1 shadow-xs`}
+              onClick={() => {
+                openPublicBookingPage(activeEmpresa.slug);
+                if (onItemClick) onItemClick();
+              }}
+              className={`py-1.5 rounded-xl ${currentTheme.buttonPrimary} text-[11px] font-black transition flex items-center justify-center gap-1 shadow-xs`}
             >
-              <ExternalLink className="w-3.5 h-3.5 text-current" /> Testar
+              <ExternalLink className="w-3 h-3 text-current" /> Testar
             </button>
           </div>
         </div>
