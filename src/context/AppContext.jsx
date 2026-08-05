@@ -20,10 +20,20 @@ import {
   getExpirationDateByDuration,
   getLabelDuracao
 } from '../services/licenseService';
+import { getSupabaseClient, isSupabaseConfigured } from '../services/supabaseClient';
 
 const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
+  const generateUUID = () => {
+    try {
+      if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+      }
+    } catch (e) {}
+    return 'u' + Date.now() + Math.random().toString(36).substring(2, 9);
+  };
+
   const loadStored = (key, fallback) => {
     try {
       const saved = localStorage.getItem(`saas_${key}`);
@@ -128,6 +138,134 @@ export const AppProvider = ({ children }) => {
     agendamento: null,
     valor: 0
   });
+
+  // SUPABASE CLOUD AUTOMATIC SYNCHRONIZATION ENGINE
+  const fetchAllFromSupabase = async () => {
+    if (!isSupabaseConfigured()) return;
+    const client = getSupabaseClient();
+    if (!client) return;
+
+    try {
+      // 1. Fetch Servicos
+      const { data: dbServicos } = await client.from('servicos').select('*');
+      if (dbServicos && Array.isArray(dbServicos)) {
+        const mappedServicos = dbServicos.map(s => ({
+          id: s.id,
+          empresaId: s.empresa_id || activeEmpresaId,
+          nome: s.nome,
+          foto: s.foto || '',
+          categoria: s.categoria || 'Geral',
+          descricao: s.descricao || '',
+          preco: Number(s.preco || 0),
+          duracaoMinutos: Number(s.duracao_minutos || 30),
+          ativo: s.ativo !== false
+        }));
+        setServicos(mappedServicos);
+      }
+
+      // 2. Fetch Funcionarios
+      const { data: dbFuncs } = await client.from('funcionarios').select('*');
+      if (dbFuncs && Array.isArray(dbFuncs)) {
+        const mappedFuncs = dbFuncs.map(f => ({
+          id: f.id,
+          empresaId: f.empresa_id || activeEmpresaId,
+          nome: f.nome,
+          foto: f.foto || '',
+          cargo: f.cargo || 'Profissional',
+          telefone: f.telefone || '',
+          whatsapp: f.whatsapp || '',
+          email: f.email || '',
+          comissaoPct: Number(f.comissao_pct || 50),
+          linkPublicoSlug: f.link_publico_slug || (f.nome ? f.nome.toLowerCase().replace(/[^a-z0-9]/g, '-') : 'func'),
+          status: f.status || 'ativo'
+        }));
+        setFuncionarios(mappedFuncs);
+      }
+
+      // 3. Fetch Clientes
+      const { data: dbClientes } = await client.from('clientes').select('*');
+      if (dbClientes && Array.isArray(dbClientes)) {
+        const mappedClientes = dbClientes.map(c => ({
+          id: c.id,
+          empresaId: c.empresa_id || activeEmpresaId,
+          nome: c.nome,
+          telefone: c.telefone || '',
+          whatsapp: c.whatsapp || c.telefone || '',
+          email: c.email || '',
+          cpf: c.cpf || '',
+          endereco: c.endereco || '',
+          observacoes: c.observacoes || ''
+        }));
+        setClientes(mappedClientes);
+      }
+
+      // 4. Fetch Agendamentos
+      const { data: dbAges } = await client.from('agendamentos').select('*');
+      if (dbAges && Array.isArray(dbAges)) {
+        const mappedAges = dbAges.map(a => ({
+          id: a.id,
+          empresaId: a.empresa_id || activeEmpresaId,
+          clienteId: a.cliente_id,
+          funcionarioId: a.funcionario_id,
+          servicoId: a.servico_id,
+          clienteNome: a.cliente_nome,
+          clienteTelefone: a.cliente_telefone || '',
+          clienteWhatsapp: a.cliente_whatsapp || a.cliente_telefone || '',
+          funcionarioNome: a.funcionario_nome || '',
+          servicoNome: a.servico_nome || '',
+          data: a.data,
+          horario: a.horario ? a.horario.substring(0, 5) : '10:00',
+          duracaoMinutos: Number(a.duracao_minutos || 30),
+          valor: Number(a.valor || 0),
+          status: a.status || 'agendado',
+          corStatus: a.cor_status || '#0284c7',
+          observacoes: a.observacoes || ''
+        }));
+        setAgendamentos(mappedAges);
+      }
+
+      // 5. Fetch Empresas
+      const { data: dbEmpresas } = await client.from('empresas').select('*');
+      if (dbEmpresas && Array.isArray(dbEmpresas) && dbEmpresas.length > 0) {
+        const mappedEmpresas = dbEmpresas.map(e => ({
+          id: e.id,
+          nome: e.nome,
+          slug: e.slug,
+          nomeProprietario: e.nome_proprietario || 'Proprietário',
+          whatsapp: e.whatsapp || '',
+          telefone: e.telefone || '',
+          email: e.email || '',
+          endereco: e.endereco || '',
+          cidade: e.cidade || '',
+          estado: e.estado || '',
+          descricao: e.descricao || ''
+        }));
+        setEmpresas(mappedEmpresas);
+      }
+    } catch (err) {
+      console.warn('Error fetching Supabase cloud data:', err);
+    }
+  };
+
+  // INITIAL SUPABASE FETCH & REALTIME LISTENERS
+  useEffect(() => {
+    if (isSupabaseConfigured()) {
+      fetchAllFromSupabase();
+
+      const client = getSupabaseClient();
+      if (client) {
+        const channel = client.channel('public:realtime')
+          .on('postgres_changes', { event: '*', schema: 'public' }, () => {
+            fetchAllFromSupabase();
+          })
+          .subscribe();
+
+        return () => {
+          client.removeChannel(channel);
+        };
+      }
+    }
+  }, []);
 
   // AUTOMATIC PUBLIC ROUTE DETECTOR ON PAGE MOUNT
   useEffect(() => {
@@ -246,6 +384,10 @@ export const AppProvider = ({ children }) => {
     if (foundUser.empresaId) setActiveEmpresaId(foundUser.empresaId);
     setCurrentView('dashboard');
 
+    if (isSupabaseConfigured()) {
+      fetchAllFromSupabase();
+    }
+
     playNotificationSound();
     return { sucesso: true, mensagem: `🎉 Login realizado com sucesso! Bem-vindo(a), ${foundUser.nome}.` };
   };
@@ -256,7 +398,7 @@ export const AppProvider = ({ children }) => {
       return { sucesso: false, mensagem: '⚠️ Este e-mail já está cadastrado. Faça login ou use "Esqueci a Senha".' };
     }
 
-    const newEmpId = `emp-${Date.now()}`;
+    const newEmpId = generateUUID();
     const nomeEmp = regData.empresaNome || 'Minha Empresa';
     const newEmpObj = {
       id: newEmpId,
@@ -273,6 +415,20 @@ export const AppProvider = ({ children }) => {
     setEmpresas(prev => [...prev, newEmpObj]);
     setActiveEmpresaId(newEmpId);
 
+    // Push new empresa to Supabase
+    if (isSupabaseConfigured()) {
+      const client = getSupabaseClient();
+      if (client) {
+        client.from('empresas').upsert({
+          id: newEmpId,
+          slug: newEmpObj.slug,
+          nome: newEmpObj.nome,
+          whatsapp: newEmpObj.whatsapp,
+          email: newEmpObj.email
+        }).catch(e => console.warn('Supabase empresa upsert err:', e));
+      }
+    }
+
     // If license key was typed, activate it!
     if (regData.licencaCodigo) {
       ativarLicencaCodigo(regData.licencaCodigo);
@@ -281,7 +437,7 @@ export const AppProvider = ({ children }) => {
     }
 
     const newUser = {
-      id: `usr-${Date.now()}`,
+      id: generateUUID(),
       nome: regData.nome || 'Proprietário',
       email: cleanEmail,
       senha: regData.senha || '123456',
@@ -490,7 +646,7 @@ export const AppProvider = ({ children }) => {
     const empObj = empresas.find(e => e.id === targetEmpresaId);
 
     const newLic = {
-      id: `lic-${Date.now()}`,
+      id: generateUUID(),
       codigoAtivacao: code,
       empresaId: targetEmpresaId,
       empresaNome: empObj ? empObj.nome : 'Empresa Cliente',
@@ -621,7 +777,7 @@ export const AppProvider = ({ children }) => {
       const dateStr = expiracaoIso.split('T')[0];
 
       match = {
-        id: `lic-wa-${Date.now()}`,
+        id: generateUUID(),
         codigoAtivacao: cleanCode,
         empresaId: activeEmpresa.id,
         empresaNome: activeEmpresa.nome,
@@ -674,17 +830,25 @@ export const AppProvider = ({ children }) => {
     };
   };
 
-  // GENERAL MUTATORS
+  // GENERAL MUTATORS WITH SUPABASE CLOUD SYNC
 
-  const saveEmpresa = (empresaData) => {
+  const saveEmpresa = async (empresaData) => {
     if (!empresaData) return;
+    let updatedEmp = null;
+
     if (empresaData.id) {
-      setEmpresas(prev => prev.map(e => e.id === empresaData.id ? { ...e, ...empresaData } : e));
+      setEmpresas(prev => prev.map(e => {
+        if (e.id === empresaData.id) {
+          updatedEmp = { ...e, ...empresaData };
+          return updatedEmp;
+        }
+        return e;
+      }));
     } else {
       const nomeStr = empresaData.nome || 'Minha Empresa';
-      const newEmp = {
+      updatedEmp = {
         ...empresaData,
-        id: `emp-${Date.now()}`,
+        id: generateUUID(),
         nome: nomeStr,
         nomeProprietario: empresaData.nomeProprietario || 'Proprietário',
         whatsapp: empresaData.whatsapp || '',
@@ -693,15 +857,34 @@ export const AppProvider = ({ children }) => {
         status: 'ativo',
         isReseller: !!empresaData.isReseller
       };
-      setEmpresas(prev => [...prev, newEmp]);
-      setActiveEmpresaId(newEmp.id);
-      gerarLicencaPersonalizada(newEmp.id, 'TESTE_24H');
+      setEmpresas(prev => [...prev, updatedEmp]);
+      setActiveEmpresaId(updatedEmp.id);
+      gerarLicencaPersonalizada(updatedEmp.id, 'TESTE_24H');
+    }
+
+    if (isSupabaseConfigured() && updatedEmp) {
+      const client = getSupabaseClient();
+      if (client) {
+        client.from('empresas').upsert({
+          id: updatedEmp.id.includes('-') && updatedEmp.id.length > 30 ? updatedEmp.id : undefined,
+          slug: updatedEmp.slug,
+          nome: updatedEmp.nome,
+          whatsapp: updatedEmp.whatsapp,
+          telefone: updatedEmp.telefone,
+          email: updatedEmp.email,
+          endereco: updatedEmp.endereco,
+          cidade: updatedEmp.cidade,
+          estado: updatedEmp.estado,
+          descricao: updatedEmp.descricao
+        }).catch(e => console.warn('Supabase empresa upsert err:', e));
+      }
     }
   };
 
-  const saveFuncionario = (funcData) => {
+  const saveFuncionario = async (funcData) => {
     if (!funcData) return;
     const targetEmpId = funcData.empresaId || activeEmpresa.id;
+    let updatedFunc = null;
 
     if (funcData.id) {
       setFuncionarios(prev => prev.map(f => {
@@ -709,20 +892,21 @@ export const AppProvider = ({ children }) => {
           const merged = { ...f, ...funcData, empresaId: f.empresaId || targetEmpId };
           const nomeStr = merged.nome || 'Funcionário';
           const slug = merged.linkPublicoSlug || nomeStr.toLowerCase().replace(/[^a-z0-9]/g, '-');
-          return { 
+          updatedFunc = { 
             ...merged, 
             linkPublicoSlug: slug, 
             comissaoPct: funcData.comissaoPct !== undefined ? Number(funcData.comissaoPct) : (f.comissaoPct || 0) 
           };
+          return updatedFunc;
         }
         return f;
       }));
     } else {
       const nomeStr = funcData.nome || 'Novo Funcionário';
       const slug = funcData.linkPublicoSlug || nomeStr.toLowerCase().replace(/[^a-z0-9]/g, '-');
-      const newFunc = {
+      updatedFunc = {
         ...funcData,
-        id: `func-${Date.now()}`,
+        id: generateUUID(),
         empresaId: targetEmpId,
         linkPublicoSlug: slug,
         comissaoPct: Number(funcData.comissaoPct) || 0,
@@ -732,25 +916,58 @@ export const AppProvider = ({ children }) => {
         avaliacoesCount: 0,
         notaMedia: 5.0
       };
-      setFuncionarios(prev => [...prev, newFunc]);
+      setFuncionarios(prev => [...prev, updatedFunc]);
     }
+
+    if (isSupabaseConfigured() && updatedFunc) {
+      const client = getSupabaseClient();
+      if (client) {
+        client.from('funcionarios').upsert({
+          id: updatedFunc.id.includes('-') && updatedFunc.id.length > 30 ? updatedFunc.id : undefined,
+          empresa_id: updatedFunc.empresaId,
+          nome: updatedFunc.nome,
+          foto: updatedFunc.foto,
+          cargo: updatedFunc.cargo,
+          telefone: updatedFunc.telefone,
+          whatsapp: updatedFunc.whatsapp,
+          email: updatedFunc.email,
+          comissao_pct: updatedFunc.comissaoPct,
+          link_publico_slug: updatedFunc.linkPublicoSlug,
+          status: updatedFunc.status
+        }).catch(e => console.warn('Supabase funcionario upsert err:', e));
+      }
+    }
+
     playNotificationSound();
   };
 
-  const deleteFuncionario = (id) => {
+  const deleteFuncionario = async (id) => {
     setFuncionarios(prev => prev.filter(f => f.id !== id));
+    if (isSupabaseConfigured()) {
+      const client = getSupabaseClient();
+      if (client) {
+        client.from('funcionarios').delete().eq('id', id).catch(e => console.warn('Supabase delete func err:', e));
+      }
+    }
   };
 
-  const saveServico = (servData) => {
+  const saveServico = async (servData) => {
     if (!servData) return;
     const targetEmpId = servData.empresaId || activeEmpresa.id;
+    let updatedServ = null;
 
     if (servData.id) {
-      setServicos(prev => prev.map(s => s.id === servData.id ? { ...s, ...servData, empresaId: s.empresaId || targetEmpId } : s));
+      setServicos(prev => prev.map(s => {
+        if (s.id === servData.id) {
+          updatedServ = { ...s, ...servData, empresaId: s.empresaId || targetEmpId };
+          return updatedServ;
+        }
+        return s;
+      }));
     } else {
-      const newServ = {
+      updatedServ = {
         ...servData,
-        id: `serv-${Date.now()}`,
+        id: generateUUID(),
         empresaId: targetEmpId,
         foto: servData.foto || 'https://images.unsplash.com/photo-1622286342621-4bd786c2447c?w=400',
         categoria: servData.categoria || 'Geral',
@@ -758,74 +975,158 @@ export const AppProvider = ({ children }) => {
         duracaoMinutos: Number(servData.duracaoMinutos) || 30,
         ativo: true
       };
-      setServicos(prev => [...prev, newServ]);
+      setServicos(prev => [...prev, updatedServ]);
     }
+
+    if (isSupabaseConfigured() && updatedServ) {
+      const client = getSupabaseClient();
+      if (client) {
+        client.from('servicos').upsert({
+          id: updatedServ.id.includes('-') && updatedServ.id.length > 30 ? updatedServ.id : undefined,
+          empresa_id: updatedServ.empresaId,
+          nome: updatedServ.nome,
+          preco: updatedServ.preco,
+          duracao_minutos: updatedServ.duracaoMinutos,
+          categoria: updatedServ.categoria,
+          descricao: updatedServ.descricao,
+          foto: updatedServ.foto,
+          ativo: updatedServ.ativo
+        }).catch(e => console.warn('Supabase servico upsert err:', e));
+      }
+    }
+
     playNotificationSound();
   };
 
-  const deleteServico = (id) => {
+  const deleteServico = async (id) => {
     setServicos(prev => prev.filter(s => s.id !== id));
+    if (isSupabaseConfigured()) {
+      const client = getSupabaseClient();
+      if (client) {
+        client.from('servicos').delete().eq('id', id).catch(e => console.warn('Supabase delete servico err:', e));
+      }
+    }
   };
 
-  const saveProduto = (prodData) => {
+  const saveProduto = async (prodData) => {
     if (!prodData) return;
     const targetEmpId = prodData.empresaId || activeEmpresa.id;
     const precoCusto = Number(prodData.precoCusto) || 0;
     const precoVenda = Number(prodData.precoVenda) || 0;
     const lucro = precoVenda - precoCusto;
+    let updatedProd = null;
 
     if (prodData.id) {
-      setProdutos(prev => prev.map(p => p.id === prodData.id ? { ...p, ...prodData, empresaId: p.empresaId || targetEmpId, precoCusto, precoVenda, lucro } : p));
+      setProdutos(prev => prev.map(p => {
+        if (p.id === prodData.id) {
+          updatedProd = { ...p, ...prodData, empresaId: p.empresaId || targetEmpId, precoCusto, precoVenda, lucro };
+          return updatedProd;
+        }
+        return p;
+      }));
     } else {
-      const newProd = {
+      updatedProd = {
         ...prodData,
-        id: `prod-${Date.now()}`,
+        id: generateUUID(),
         empresaId: targetEmpId,
         precoCusto,
         precoVenda,
         lucro
       };
-      setProdutos(prev => [...prev, newProd]);
+      setProdutos(prev => [...prev, updatedProd]);
     }
+
+    if (isSupabaseConfigured() && updatedProd) {
+      const client = getSupabaseClient();
+      if (client) {
+        client.from('produtos').upsert({
+          id: updatedProd.id.includes('-') && updatedProd.id.length > 30 ? updatedProd.id : undefined,
+          empresa_id: updatedProd.empresaId,
+          nome: updatedProd.nome,
+          preco_venda: updatedProd.precoVenda,
+          preco_custo: updatedProd.precoCusto,
+          estoque: updatedProd.estoque || 0,
+          categoria: updatedProd.categoria
+        }).catch(e => console.warn('Supabase produto upsert err:', e));
+      }
+    }
+
     playNotificationSound();
   };
 
-  const deleteProduto = (id) => {
+  const deleteProduto = async (id) => {
     setProdutos(prev => prev.filter(p => p.id !== id));
+    if (isSupabaseConfigured()) {
+      const client = getSupabaseClient();
+      if (client) {
+        client.from('produtos').delete().eq('id', id).catch(e => console.warn('Supabase delete produto err:', e));
+      }
+    }
   };
 
-  const saveCliente = (cliData) => {
+  const saveCliente = async (cliData) => {
     if (!cliData) return;
     const targetEmpId = cliData.empresaId || activeEmpresa.id;
+    let updatedCli = null;
     
     if (cliData.id) {
-      setClientes(prev => prev.map(c => c.id === cliData.id ? { ...c, ...cliData, empresaId: c.empresaId || targetEmpId } : c));
+      setClientes(prev => prev.map(c => {
+        if (c.id === cliData.id) {
+          updatedCli = { ...c, ...cliData, empresaId: c.empresaId || targetEmpId };
+          return updatedCli;
+        }
+        return c;
+      }));
     } else {
-      const newCli = {
+      updatedCli = {
         ...cliData,
-        id: `cli-${Date.now()}`,
+        id: generateUUID(),
         empresaId: targetEmpId,
         atendimentosCount: 0,
         valorTotalGasto: 0,
         ultimoAtendimento: null,
         proximoAtendimento: null
       };
-      setClientes(prev => [...prev, newCli]);
+      setClientes(prev => [...prev, updatedCli]);
     }
+
+    if (isSupabaseConfigured() && updatedCli) {
+      const client = getSupabaseClient();
+      if (client) {
+        client.from('clientes').upsert({
+          id: updatedCli.id.includes('-') && updatedCli.id.length > 30 ? updatedCli.id : undefined,
+          empresa_id: updatedCli.empresaId,
+          nome: updatedCli.nome,
+          telefone: updatedCli.telefone,
+          whatsapp: updatedCli.whatsapp,
+          email: updatedCli.email,
+          cpf: updatedCli.cpf,
+          endereco: updatedCli.endereco,
+          observacoes: updatedCli.observacoes
+        }).catch(e => console.warn('Supabase cliente upsert err:', e));
+      }
+    }
+
     playNotificationSound();
   };
 
-  const deleteCliente = (id) => {
+  const deleteCliente = async (id) => {
     setClientes(prev => prev.filter(c => c.id !== id));
+    if (isSupabaseConfigured()) {
+      const client = getSupabaseClient();
+      if (client) {
+        client.from('clientes').delete().eq('id', id).catch(e => console.warn('Supabase delete cliente err:', e));
+      }
+    }
   };
 
-  const addAgendamento = (agendData) => {
+  const addAgendamento = async (agendData) => {
     const targetEmpId = agendData.empresaId || activeEmpresa.id;
     const funcionarioObj = funcionarios.find(f => f.id === agendData.funcionarioId);
     const servicoObj = servicos.find(s => s.id === agendData.servicoId);
     
     const newAge = {
-      id: `age-${Date.now()}`,
+      id: generateUUID(),
       empresaId: targetEmpId,
       clienteId: agendData.clienteId || null,
       clienteNome: agendData.clienteNome || 'Cliente',
@@ -841,15 +1142,39 @@ export const AppProvider = ({ children }) => {
       valor: Number(agendData.valor) || (servicoObj ? servicoObj.preco : 50),
       status: 'agendado',
       corStatus: '#0284c7',
-      observacoes: agendData.observacoes || 'Agendamento registrado.',
+      origem: agendData.origem || 'LINK_PUBLICO',
+      observacoes: agendData.observacoes || 'Agendamento registrado via Link Público.',
       criadoEm: new Date().toISOString()
     };
 
     setAgendamentos(prev => [newAge, ...prev]);
 
+    if (isSupabaseConfigured()) {
+      const client = getSupabaseClient();
+      if (client) {
+        client.from('agendamentos').upsert({
+          id: newAge.id.includes('-') && newAge.id.length > 30 ? newAge.id : undefined,
+          empresa_id: newAge.empresaId,
+          cliente_id: newAge.clienteId && newAge.clienteId.includes('-') ? newAge.clienteId : undefined,
+          funcionario_id: newAge.funcionarioId && newAge.funcionarioId.includes('-') ? newAge.funcionarioId : undefined,
+          servico_id: newAge.servicoId && newAge.servicoId.includes('-') ? newAge.servicoId : undefined,
+          cliente_nome: newAge.clienteNome,
+          cliente_telefone: newAge.clienteTelefone,
+          cliente_whatsapp: newAge.clienteWhatsapp,
+          data: newAge.data,
+          horario: newAge.horario,
+          duracao_minutos: newAge.duracaoMinutos,
+          valor: newAge.valor,
+          status: newAge.status,
+          cor_status: newAge.corStatus,
+          observacoes: newAge.observacoes
+        }).catch(e => console.warn('Supabase agendamento upsert err:', e));
+      }
+    }
+
     // 1. Notificação na Central de Avisos
     const newNotif = {
-      id: `notif-${Date.now()}`,
+      id: generateUUID(),
       empresaId: newAge.empresaId,
       titulo: '🎉 Novo Agendamento Online!',
       mensagem: `${newAge.clienteNome} agendou ${newAge.servicoNome} para dia ${newAge.data} às ${newAge.horario}.`,
@@ -874,27 +1199,47 @@ export const AppProvider = ({ children }) => {
     return newAge;
   };
 
-  const saveAgendamento = (agendData) => {
+  const saveAgendamento = async (agendData) => {
     if (!agendData || !agendData.id) return;
     const funcionarioObj = funcionarios.find(f => f.id === agendData.funcionarioId);
     const servicoObj = servicos.find(s => s.id === agendData.servicoId);
+    let updatedAge = null;
 
     setAgendamentos(prev => prev.map(a => {
       if (a.id === agendData.id) {
-        return {
+        updatedAge = {
           ...a,
           ...agendData,
           funcionarioNome: funcionarioObj ? funcionarioObj.nome : (agendData.funcionarioNome || a.funcionarioNome),
           servicoNome: servicoObj ? servicoObj.nome : (agendData.servicoNome || a.servicoNome),
           valor: Number(agendData.valor) || (servicoObj ? servicoObj.preco : a.valor)
         };
+        return updatedAge;
       }
       return a;
     }));
+
+    if (isSupabaseConfigured() && updatedAge) {
+      const client = getSupabaseClient();
+      if (client) {
+        client.from('agendamentos').upsert({
+          id: updatedAge.id.includes('-') && updatedAge.id.length > 30 ? updatedAge.id : undefined,
+          empresa_id: updatedAge.empresaId,
+          cliente_nome: updatedAge.clienteNome,
+          cliente_telefone: updatedAge.clienteTelefone,
+          data: updatedAge.data,
+          horario: updatedAge.horario,
+          valor: updatedAge.valor,
+          status: updatedAge.status,
+          observacoes: updatedAge.observacoes
+        }).catch(e => console.warn('Supabase agendamento save err:', e));
+      }
+    }
+
     playNotificationSound();
   };
 
-  const updateAgendamentoStatus = (id, newStatus, autoWhatsapp = true) => {
+  const updateAgendamentoStatus = async (id, newStatus, autoWhatsapp = true) => {
     const colorMap = {
       agendado: '#0284c7',
       confirmado: '#eab308',
@@ -922,7 +1267,7 @@ export const AppProvider = ({ children }) => {
           targetAge.comissaoValorCalculada = comissaoValor;
 
           const receitaFin = {
-            id: `fin-rec-${Date.now()}`,
+            id: generateUUID(),
             empresaId: age.empresaId,
             agendamentoId: age.id,
             descricao: `Receita Serviço: ${age.servicoNome} (${age.clienteNome})`,
@@ -937,7 +1282,7 @@ export const AppProvider = ({ children }) => {
           };
 
           const comissaoFin = {
-            id: `fin-com-${Date.now() + 1}`,
+            id: generateUUID(),
             empresaId: age.empresaId,
             agendamentoId: age.id,
             funcionarioId: age.funcionarioId,
@@ -974,6 +1319,16 @@ export const AppProvider = ({ children }) => {
       return age;
     }));
 
+    if (isSupabaseConfigured() && targetAge) {
+      const client = getSupabaseClient();
+      if (client) {
+        client.from('agendamentos').update({
+          status: newStatus,
+          cor_status: colorMap[newStatus] || '#0284c7'
+        }).eq('id', id).catch(e => console.warn('Supabase status update err:', e));
+      }
+    }
+
     if (autoWhatsapp && targetAge) {
       let statusMsg = '';
       if (newStatus === 'agendado') {
@@ -994,8 +1349,14 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  const deleteAgendamento = (id) => {
+  const deleteAgendamento = async (id) => {
     setAgendamentos(prev => prev.filter(a => a.id !== id));
+    if (isSupabaseConfigured()) {
+      const client = getSupabaseClient();
+      if (client) {
+        client.from('agendamentos').delete().eq('id', id).catch(e => console.warn('Supabase delete age err:', e));
+      }
+    }
   };
 
   const saveFinanceiroItem = (itemData) => {
@@ -1006,7 +1367,7 @@ export const AppProvider = ({ children }) => {
     } else {
       const newItem = {
         ...itemData,
-        id: `fin-${Date.now()}`,
+        id: generateUUID(),
         empresaId: targetEmpId,
         status: itemData.status || (itemData.tipo === 'receita' ? 'pago' : 'pendente'),
         isRecorrente: !!itemData.isRecorrente
@@ -1039,7 +1400,7 @@ export const AppProvider = ({ children }) => {
 
     const newItem = {
       ...item,
-      id: `fin-${Date.now()}`,
+      id: generateUUID(),
       descricao: `${item.descricao} (Recorrente Mensal)`,
       dataVencimento: nextDateStr,
       dataPagamento: null,
@@ -1063,7 +1424,7 @@ export const AppProvider = ({ children }) => {
     } else {
       const newLemb = {
         ...lembData,
-        id: `lemb-${Date.now()}`,
+        id: generateUUID(),
         empresaId: targetEmpId,
         status: lembData.status || 'futuro'
       };
@@ -1216,7 +1577,8 @@ export const AppProvider = ({ children }) => {
       deleteLembrete,
       markNotificacoesLidas,
       setWhatsappTemplates,
-      resetAllDataToDefault
+      resetAllDataToDefault,
+      fetchAllFromSupabase
     }}>
       {children}
     </AppContext.Provider>
