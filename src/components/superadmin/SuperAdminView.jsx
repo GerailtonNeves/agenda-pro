@@ -28,7 +28,9 @@ import {
   Edit3,
   Search,
   Check,
-  X
+  X,
+  Unlock,
+  Shield
 } from 'lucide-react';
 import { getLabelDuracao } from '../../services/licenseService';
 
@@ -54,6 +56,9 @@ export const SuperAdminView = () => {
 
   // Edit Buyer Company Modal
   const [editingEmpresa, setEditingEmpresa] = useState(null);
+
+  // 2-Click Unblock Tracker State: stores license ID waiting for 2nd click
+  const [unblockPendingId, setUnblockPendingId] = useState(null);
 
   // Unified Form State for Registering Buyer Company & Issuing License
   const [nomeEmpresa, setNomeEmpresa] = useState('');
@@ -84,14 +89,11 @@ export const SuperAdminView = () => {
       segmento: 'Comercial'
     };
 
-    // 1. Save Buyer Company
     saveEmpresa(newEmpObj);
 
-    // 2. Generate License Key
     const lic = gerarLicencaPersonalizada(newEmpId, duracaoLicenca, whatsapp);
     setLastGeneratedKey(lic);
 
-    // 3. Reset Inputs
     setNomeEmpresa('');
     setNomeResponsavel('');
     setWhatsapp('');
@@ -103,6 +105,28 @@ export const SuperAdminView = () => {
     if (!editingEmpresa) return;
     saveEmpresa(editingEmpresa);
     setEditingEmpresa(null);
+  };
+
+  // 1-Click Block / 2-Click Unblock Logic
+  const handleBlockUnblockToggle = (licId, isRevoked) => {
+    if (!isRevoked) {
+      // 1-CLICK BLOCK: Instantly block license
+      revogarLicenca(licId);
+      setUnblockPendingId(null);
+    } else {
+      // 2-CLICK UNBLOCK: Requires second click confirmation
+      if (unblockPendingId === licId) {
+        // Second Click -> Unblock license
+        revogarLicenca(licId);
+        setUnblockPendingId(null);
+      } else {
+        // First Click -> Prompt for 2nd click confirmation
+        setUnblockPendingId(licId);
+        setTimeout(() => {
+          setUnblockPendingId(prev => prev === licId ? null : prev);
+        }, 4000); // 4s timeout to complete 2nd click
+      }
+    }
   };
 
   const copyToClipboard = (text) => {
@@ -150,10 +174,10 @@ export const SuperAdminView = () => {
             <Crown className="w-4 h-4 text-slate-950" /> Painel Master SuperAdmin SaaS
           </span>
           <h2 className="text-2xl md:text-3xl font-black text-white flex items-center gap-2.5">
-            Cadastro Completo de Clientes Compradores & Gestão de Validades
+            Cadastro de Compradores & Trava de Bloqueio 1-Clique / 2-Cliques
           </h2>
           <p className="text-sm text-slate-300 font-medium mt-1">
-            Cadastre a empresa compradora, responsável pessoal, WhatsApp e duração para incluir instantaneamente na tabela geral do sistema!
+            Bloqueie qualquer cliente com 1 clique. Para desbloquear, clique 2 vezes para maior segurança!
           </p>
         </div>
 
@@ -323,7 +347,7 @@ export const SuperAdminView = () => {
               <Building2 className="w-6 h-6 text-sky-600" /> Cadastro Geral de Empresas, Status Master & Validades ({empresas.length})
             </h3>
             <p className="text-xs text-slate-500 font-bold mt-0.5">
-              Todos os dados das empresas cadastradas aparecem aqui com datas de ativação, expiração e controles master.
+              1 clique para Bloquear • 2 cliques para Desbloquear a licença do cliente.
             </p>
           </div>
 
@@ -350,7 +374,7 @@ export const SuperAdminView = () => {
                 <th className="py-3.5 px-4">Chave Emitida</th>
                 <th className="py-3.5 px-4">Data de Ativação</th>
                 <th className="py-3.5 px-4">Data de Expiração</th>
-                <th className="py-3.5 px-4">Status Licença</th>
+                <th className="py-3.5 px-4">Trava de Bloqueio (1x / 2x)</th>
                 <th className="py-3.5 px-4 text-right rounded-r-xl">Ações Master</th>
               </tr>
             </thead>
@@ -366,6 +390,8 @@ export const SuperAdminView = () => {
                 };
 
                 const isRevoked = licObj.status === 'REVOGADO';
+                const isUnblockPending = unblockPendingId === licObj.id;
+
                 const dateAtiv = licObj.criadoEm ? new Date(licObj.criadoEm).toLocaleString('pt-BR') : 'Hoje';
                 const dateExp = new Date(licObj.dataExpiracaoIso || licObj.dataExpiracao).toLocaleString('pt-BR');
 
@@ -438,15 +464,36 @@ export const SuperAdminView = () => {
                       </div>
                     </td>
 
-                    {/* Status Licenca */}
+                    {/* Trava de Bloqueio: 1-Clique Bloquear / 2-Cliques Desbloquear */}
                     <td className="py-4 px-4 whitespace-nowrap">
-                      <span className={`px-3 py-1 rounded-full text-xs font-black border ${
-                        isRevoked
-                          ? 'bg-rose-100 text-rose-900 border-rose-300'
-                          : 'bg-emerald-100 text-emerald-900 border-emerald-300'
-                      }`}>
-                        {licObj.status || 'ATIVO'}
-                      </span>
+                      <button
+                        onClick={() => handleBlockUnblockToggle(licObj.id, isRevoked)}
+                        className={`px-3.5 py-2 rounded-xl text-xs font-black transition border shadow-sm flex items-center gap-1.5 ${
+                          !isRevoked
+                            ? 'bg-emerald-500 hover:bg-rose-600 text-white border-emerald-400 hover:border-rose-500'
+                            : isUnblockPending
+                            ? 'bg-amber-500 hover:bg-emerald-600 text-slate-950 hover:text-white border-amber-400 animate-pulse'
+                            : 'bg-rose-600 hover:bg-amber-500 text-white border-rose-500'
+                        }`}
+                        title={!isRevoked ? "Clique 1 vez para BLOQUEAR este cliente" : "Clique 2 vezes para DESBLOQUEAR este cliente"}
+                      >
+                        {!isRevoked ? (
+                          <>
+                            <Shield className="w-4 h-4 text-white" />
+                            <span>🟢 ATIVO (Clique 1x P/ Bloquear)</span>
+                          </>
+                        ) : isUnblockPending ? (
+                          <>
+                            <Unlock className="w-4 h-4 text-slate-950" />
+                            <span>⚠️ Clique +1x para Confirmar Desbloqueio</span>
+                          </>
+                        ) : (
+                          <>
+                            <Lock className="w-4 h-4 text-white" />
+                            <span>🚨 BLOQUEADO (Clique 2x P/ Desbloquear)</span>
+                          </>
+                        )}
+                      </button>
                     </td>
 
                     {/* Ações de Gerenciamento Complete */}
@@ -468,18 +515,6 @@ export const SuperAdminView = () => {
                           title="Reenviar pelo WhatsApp"
                         >
                           <Share2 className="w-4 h-4 text-emerald-700" />
-                        </button>
-
-                        {/* Revogar / Reativar */}
-                        <button
-                          onClick={() => revogarLicenca(licObj.id)}
-                          className={`px-3 py-1.5 rounded-xl font-black text-xs transition border ${
-                            isRevoked
-                              ? 'bg-emerald-100 text-emerald-950 border-emerald-300 hover:bg-emerald-200'
-                              : 'bg-rose-100 text-rose-950 border-rose-300 hover:bg-rose-200'
-                          }`}
-                        >
-                          {isRevoked ? 'Reativar' : '🚫 Revogar'}
                         </button>
 
                         {/* Excluir Registro */}
