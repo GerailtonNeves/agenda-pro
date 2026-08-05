@@ -68,9 +68,9 @@ export const AppProvider = ({ children }) => {
   // Current Hardware Fingerprint (PC, Mobile, Tablet)
   const [hardwareId] = useState(() => getOrGenerateHardwareId());
   
-  // App Navigation & Auth View State
+  // App Navigation & Auth View State - DEFAULT TO REGULAR CLIENT ('admin')
   const [currentView, setCurrentView] = useState('dashboard');
-  const [userRole, setUserRole] = useState('superadmin');
+  const [userRole, setUserRole] = useState(() => loadStored('userRole', 'admin'));
   const [activeFuncionarioId, setActiveFuncionarioId] = useState(null);
   const [publicBookingSlug, setPublicBookingSlug] = useState(null);
   const [publicEmployeeSlug, setPublicEmployeeSlug] = useState(null);
@@ -153,26 +153,27 @@ export const AppProvider = ({ children }) => {
   useEffect(() => { safeSaveStored('financeiro', financeiro); }, [financeiro]);
   useEffect(() => { safeSaveStored('licencas', licencas); }, [licencas]);
   useEffect(() => { safeSaveStored('systemTheme', systemTheme); }, [systemTheme]);
+  useEffect(() => { safeSaveStored('userRole', userRole); }, [userRole]);
 
   // Active Company Evaluation
   const activeEmpresa = (empresas && empresas.length > 0 
     ? empresas.find(e => e.id === activeEmpresaId) || empresas[0] 
     : initialEmpresas[0]) || initialEmpresas[0];
 
-  // Reseller Authorization
+  // Reseller Authorization (ONLY TRUE IF USER IS SUPERADMIN OR COMPANY IS AUTHORIZED RESELLER)
   const isResellerAuthorized = userRole === 'superadmin' || !!activeEmpresa.isReseller;
 
   // License Evaluation
   const activeLicenca = licencas.find(l => l.empresaId === activeEmpresa.id) || {
     id: `lic-auto-${activeEmpresa.id}`,
-    codigoAtivacao: 'AGY-1ANO-AUT1-9988',
+    codigoAtivacao: 'AGY-24H-AUT1-0001',
     empresaId: activeEmpresa.id,
     empresaNome: activeEmpresa.nome,
-    duracao: '1_ANO',
-    plano: 'ANUAL',
+    duracao: 'TESTE_24H',
+    plano: 'MENSAL',
     status: 'ATIVO',
-    dataExpiracaoIso: '2030-12-31T23:59:59.000Z',
-    dataExpiracao: '2030-12-31',
+    dataExpiracaoIso: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    dataExpiracao: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     dispositivoVinculadoId: hardwareId
   };
 
@@ -190,7 +191,6 @@ export const AppProvider = ({ children }) => {
         audioCtx.resume();
       }
 
-      // Play double-beep chime
       const playBeep = (freq, startTime, duration) => {
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();

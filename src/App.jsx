@@ -10,6 +10,7 @@ import { ReceiptModal } from './components/common/ReceiptModal';
 import { BudgetModal } from './components/common/BudgetModal';
 import { LicenseExpiredLockModal } from './components/common/LicenseExpiredLockModal';
 import { NewAppointmentToastModal } from './components/common/NewAppointmentToastModal';
+import { PwaInstallModal } from './components/common/PwaInstallModal';
 
 // Main Views
 import { DashboardView } from './components/dashboard/DashboardView';
@@ -117,13 +118,14 @@ export function App() {
         </main>
       </div>
 
-      {/* Global Application Modals & Toast Banners */}
+      {/* Global Application Modals, PWA Install & Toast Banners */}
       <ImageUploaderModal />
       <WhatsAppModal />
       <ReceiptModal />
       <BudgetModal />
       <LicenseExpiredLockModal />
       <NewAppointmentToastModal />
+      <PwaInstallModal />
     </div>
   );
 }

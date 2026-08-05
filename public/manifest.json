@@ -1,16 +1,18 @@
 {
   "short_name": "AgendaPro",
-  "name": "AgendaPro SaaS - Agendamentos & Gestão",
+  "name": "AgendaPro SaaS - Sistema de Agendamentos & Gestão",
+  "description": "Sistema completo de agendamento online, gestão de clientes, caixa e comissões.",
   "icons": [
     {
       "src": "/favicon.svg",
       "type": "image/svg+xml",
-      "sizes": "512x512"
+      "sizes": "512x512 192x192 128x128 64x64 32x32 16x16",
+      "purpose": "any maskable"
     }
   ],
   "start_url": "/",
   "background_color": "#0f172a",
-  "theme_color": "#0f172a",
+  "theme_color": "#0284c7",
   "display": "standalone",
   "orientation": "portrait"
 }
