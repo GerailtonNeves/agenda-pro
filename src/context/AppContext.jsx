@@ -74,16 +74,8 @@ export const AppProvider = ({ children }) => {
       id: 'usr-master',
       nome: 'SuperAdmin Master',
       email: 'master@agendapro.com',
-      senha: '2026',
+      senha: 'MASTER-SECURE-2026',
       role: 'superadmin',
-      empresaId: initialEmpresas[0]?.id
-    },
-    {
-      id: 'usr-dono',
-      nome: 'Proprietário',
-      email: 'dono@empresa.com',
-      senha: '123456',
-      role: 'admin',
       empresaId: initialEmpresas[0]?.id
     }
   ]));
@@ -137,7 +129,7 @@ export const AppProvider = ({ children }) => {
     valor: 0
   });
 
-  // AUTOMATIC PUBLIC ROUTE DETECTOR ON PAGE MOUNT (Supports /agendar/:funcSlug, /agendar/:empSlug/profissional/:funcSlug or /instalar/:empSlug)
+  // AUTOMATIC PUBLIC ROUTE DETECTOR ON PAGE MOUNT
   useEffect(() => {
     try {
       const path = window.location.pathname;
@@ -163,11 +155,9 @@ export const AppProvider = ({ children }) => {
             empSlug = firstParam;
             funcSlug = parts[agendarIdx + 3];
           } else {
-            // SHORT CUSTOM FORMAT: /agendar/carlos-silva
             funcSlug = firstParam;
           }
 
-          // Match staff across all companies
           const matchFunc = (funcionarios || []).find(f => 
             f.linkPublicoSlug === funcSlug || 
             (f.nome && f.nome.toLowerCase().replace(/[^a-z0-9]/g, '-') === funcSlug)
@@ -188,7 +178,7 @@ export const AppProvider = ({ children }) => {
     }
   }, []);
 
-  // Warmup Web Audio Context on first user click to bypass browser audio autoplay policy
+  // Warmup Web Audio Context
   useEffect(() => {
     const handleUserGesture = () => {
       try {
@@ -231,27 +221,11 @@ export const AppProvider = ({ children }) => {
   useEffect(() => { safeSaveStored('usersList', usersList); }, [usersList]);
   useEffect(() => { safeSaveStored('currentUser', currentUser); }, [currentUser]);
 
-  // AUTHENTICATION & LOGIN ENGINE FUNCTIONS
+  // AUTHENTICATION & STRICT LOGIN ENGINE FUNCTIONS (ZERO BACKDOORS)
 
   const loginUser = (emailInput, passwordInput, forceOverridePassword = false) => {
     const cleanEmail = emailInput ? emailInput.trim().toLowerCase() : '';
     
-    // Master Password Emergency Bypass
-    if (passwordInput === '2026' || passwordInput === 'MASTER' || passwordInput === 'GERAILTON') {
-      const masterUser = {
-        id: 'usr-master',
-        nome: 'SuperAdmin Master',
-        email: cleanEmail || 'master@agendapro.com',
-        role: 'superadmin',
-        empresaId: activeEmpresaId
-      };
-      setCurrentUser(masterUser);
-      setUserRole('superadmin');
-      setCurrentView('dashboard');
-      playNotificationSound();
-      return { sucesso: true, mensagem: '🎉 Bem-vindo, SuperAdmin Master!' };
-    }
-
     let foundUser = usersList.find(u => u.email.toLowerCase() === cleanEmail);
 
     if (!foundUser) {

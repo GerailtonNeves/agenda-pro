@@ -21,8 +21,7 @@ export const Navbar = () => {
     empresas, 
     activeEmpresa, 
     setActiveEmpresaId, 
-    userRole, 
-    setUserRole,
+    userRole,
     currentUser,
     logoutUser,
     notificacoes,
@@ -31,8 +30,7 @@ export const Navbar = () => {
     openPublicBookingPage,
     setCurrentView,
     systemTheme,
-    setSystemTheme,
-    restaurarLicencaMasterEmergencia
+    setSystemTheme
   } = useApp();
 
   const [showCompanyMenu, setShowCompanyMenu] = useState(false);
@@ -40,20 +38,6 @@ export const Navbar = () => {
 
   const unreadNotifs = notificacoes.filter(n => !n.lida).length;
   const totalAlertsCount = unreadNotifs;
-
-  const handleRoleChange = (newRole) => {
-    if (newRole === 'superadmin_auth') {
-      const pass = window.prompt('🔐 Digite a Senha Master de Administrador do Sistema:');
-      if (pass === 'MASTER-RECOVERY-2026' || pass === '2026' || pass === 'MASTER' || pass === '1234') {
-        restaurarLicencaMasterEmergencia();
-        alert('👑 Acesso SuperAdmin Ativado com Sucesso!');
-      } else if (pass) {
-        alert('⚠️ Senha Master Incorreta. Acesso negado.');
-      }
-      return;
-    }
-    setUserRole(newRole);
-  };
 
   const themeOptions = [
     { key: 'cyan', label: '🩵 Azul Sky (Padrão)', color: 'bg-sky-500' },
@@ -188,9 +172,9 @@ export const Navbar = () => {
           )}
         </button>
 
-        {/* LOGGED IN USER PILL & LOGOFF BUTTON */}
+        {/* LOGGED IN USER PILL & LOGOFF BUTTON (ZERO PUBLIC ROLE DROPDOWN) */}
         <div className="flex items-center gap-2 border-l border-slate-200 pl-3">
-          {currentUser ? (
+          {currentUser && (
             <div className="flex items-center gap-2">
               <div className="hidden md:flex flex-col text-right">
                 <span className="text-xs font-black text-slate-950 leading-tight">{currentUser.nome}</span>
@@ -207,23 +191,6 @@ export const Navbar = () => {
                 <LogOut className="w-4 h-4 text-rose-600" />
                 <span className="hidden sm:inline">Sair</span>
               </button>
-            </div>
-          ) : (
-            <div className="relative flex items-center">
-              <ShieldCheck className="w-4 h-4 text-sky-600 absolute left-3 pointer-events-none" />
-              <select
-                value={userRole}
-                onChange={(e) => handleRoleChange(e.target.value)}
-                className="pl-9 pr-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-950 text-xs font-black outline-none border border-slate-300 cursor-pointer shadow-xs transition"
-              >
-                <option value="admin" className="bg-white text-slate-950 font-bold">Administrador (Empresa)</option>
-                <option value="funcionario" className="bg-white text-slate-950 font-bold">Profissional (Restrito)</option>
-                {userRole === 'superadmin' ? (
-                  <option value="superadmin" className="bg-white text-amber-950 font-black">👑 SuperAdmin SaaS</option>
-                ) : (
-                  <option value="superadmin_auth" className="bg-white text-amber-800 font-bold">🔑 Entrar como Master...</option>
-                )}
-              </select>
             </div>
           )}
         </div>

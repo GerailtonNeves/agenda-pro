@@ -22,9 +22,7 @@ export const LoginView = () => {
   const { 
     loginUser, 
     registerUser, 
-    recoverPasswordByEmail,
-    empresas,
-    activeEmpresa
+    recoverPasswordByEmail
   } = useApp();
 
   const [activeTab, setActiveTab] = useState('login'); // 'login' | 'register' | 'forgot'
@@ -32,7 +30,7 @@ export const LoginView = () => {
   // Password Visibility
   const [showPassword, setShowPassword] = useState(false);
 
-  // Login Form State
+  // Login Form State - ZERO AUTOFILL
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
 
@@ -57,6 +55,10 @@ export const LoginView = () => {
   const handleLoginSubmit = (e) => {
     e.preventDefault();
     setFeedback(null);
+    if (!loginEmail || !loginPassword) {
+      setFeedback({ sucesso: false, mensagem: '⚠️ Preencha o e-mail e a senha cadastrados.' });
+      return;
+    }
     const res = loginUser(loginEmail, loginPassword);
     setFeedback(res);
   };
@@ -64,6 +66,10 @@ export const LoginView = () => {
   const handleRegisterSubmit = (e) => {
     e.preventDefault();
     setFeedback(null);
+    if (!regNome || !regEmpresaNome || !regEmail || !regPassword) {
+      setFeedback({ sucesso: false, mensagem: '⚠️ Preencha todos os campos obrigatórios (*).' });
+      return;
+    }
     const res = registerUser({
       nome: regNome,
       empresaNome: regEmpresaNome,
@@ -94,7 +100,7 @@ export const LoginView = () => {
     setFeedback(null);
 
     if (forgotCodeInput.trim() !== generatedCode.toString().trim()) {
-      setFeedback({ sucesso: false, mensagem: '❌ Código de verificação incorreto! Digite o código enviado.' });
+      setFeedback({ sucesso: false, mensagem: '❌ Código de verificação incorreto! Digite o código correto.' });
       return;
     }
 
@@ -105,17 +111,6 @@ export const LoginView = () => {
 
     const res = loginUser(forgotEmail, newPasswordInput, true); // Force password override
     setFeedback({ sucesso: true, mensagem: '🎉 Senha redefinida com sucesso! Você já está logado no sistema.' });
-  };
-
-  // Quick Auto-fill Helpers
-  const fillMasterDemo = () => {
-    setLoginEmail('master@agendapro.com');
-    setLoginPassword('2026');
-  };
-
-  const fillDonoDemo = () => {
-    setLoginEmail('dono@empresa.com');
-    setLoginPassword('123456');
   };
 
   return (
@@ -131,7 +126,7 @@ export const LoginView = () => {
             Agenda<span className="text-sky-600">Pro</span> SaaS
           </h1>
           <p className="text-xs text-slate-600 font-semibold">
-            Acesse seu aplicativo de agendamentos e gestão empresarial
+            Painel de Acesso Seguro • Autenticação Obrigatória
           </p>
         </div>
 
@@ -168,7 +163,7 @@ export const LoginView = () => {
           </button>
         </div>
 
-        {/* TAB 1: LOGIN FORM */}
+        {/* TAB 1: STRICT LOGIN FORM (ZERO PRE-FILLED DATA) */}
         {activeTab === 'login' && (
           <form onSubmit={handleLoginSubmit} className="space-y-4 animate-fadeIn">
             <div>
@@ -221,17 +216,6 @@ export const LoginView = () => {
             >
               <Lock className="w-5 h-5 text-white" /> Entrar no Aplicativo
             </button>
-
-            {/* Quick Demo Fill Buttons */}
-            <div className="pt-2 border-t border-slate-100 flex flex-wrap gap-2 text-[11px] font-bold text-slate-600 items-center justify-center">
-              <span>Atalhos Rápidos:</span>
-              <button type="button" onClick={fillDonoDemo} className="px-2.5 py-1 rounded-lg bg-sky-100 hover:bg-sky-200 text-sky-900 border border-sky-300">
-                🏢 Dono de Empresa
-              </button>
-              <button type="button" onClick={fillMasterDemo} className="px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300">
-                👑 SuperAdmin Master
-              </button>
-            </div>
           </form>
         )}
 
@@ -304,7 +288,7 @@ export const LoginView = () => {
 
             <div>
               <label className="block text-xs font-black uppercase text-amber-700 mb-1 flex items-center gap-1">
-                <Key className="w-3.5 h-3.5 text-amber-600" /> Chave de Licença de Ativação (Opcional ou AGY-1ANO...)
+                <Key className="w-3.5 h-3.5 text-amber-600" /> Chave de Licença de Ativação (Enviada no WhatsApp)
               </label>
               <input
                 type="text"
