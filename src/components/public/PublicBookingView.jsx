@@ -25,7 +25,6 @@ export const PublicBookingView = () => {
     activeEmpresa,
     activeEmpresaId,
     todosFuncionarios, 
-    servicos, 
     todosServicos,
     addAgendamento, 
     publicBookingSlug, 
@@ -35,11 +34,14 @@ export const PublicBookingView = () => {
     userRole
   } = useApp();
 
-  // Find exact target company matching slug or active company
-  const empresa = empresas.find(e => e.slug === publicBookingSlug || e.id === activeEmpresaId) || activeEmpresa || empresas[0];
+  // STRICT COMPANY EVALUATION: Find company matching public slug, or current active company
+  const empresa = (publicBookingSlug 
+    ? empresas.find(e => e.slug === publicBookingSlug) || activeEmpresa 
+    : activeEmpresa) || empresas[0];
+
+  // STRICT FILTERING: Show ONLY professionals and services that belong to THIS specific company (No Fake Demo Data)
   const staff = (todosFuncionarios || []).filter(f => f.empresaId === empresa.id);
-  const companyServicos = (todosServicos || []).filter(s => s.empresaId === empresa.id);
-  const displayServicos = companyServicos.length > 0 ? companyServicos : (servicos || []);
+  const displayServicos = (todosServicos || []).filter(s => s.empresaId === empresa.id);
 
   const preSelectedFunc = publicEmployeeSlug ? staff.find(f => f.linkPublicoSlug === publicEmployeeSlug) : null;
 
@@ -54,20 +56,24 @@ export const PublicBookingView = () => {
   
   const [confirmedBooking, setConfirmedBooking] = useState(null);
 
-  // Set default selected service and professional when component mounts or data changes
+  // Auto-select first real service and professional registered for this company
   useEffect(() => {
-    if (displayServicos && displayServicos.length > 0 && !selectedServico) {
+    if (displayServicos && displayServicos.length > 0) {
       setSelectedServico(displayServicos[0]);
+    } else {
+      setSelectedServico(null);
     }
-  }, [displayServicos]);
+  }, [empresa.id, todosServicos]);
 
   useEffect(() => {
     if (preSelectedFunc) {
       setSelectedFunc(preSelectedFunc);
-    } else if (staff && staff.length > 0 && !selectedFunc) {
+    } else if (staff && staff.length > 0) {
       setSelectedFunc(staff[0]);
+    } else {
+      setSelectedFunc(null);
     }
-  }, [preSelectedFunc, staff]);
+  }, [empresa.id, preSelectedFunc, todosFuncionarios]);
 
   const availableHours = ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
 
@@ -114,7 +120,7 @@ export const PublicBookingView = () => {
       )}
 
       <div className="max-w-4xl mx-auto px-4 pt-6 space-y-8">
-        {/* Main Company Header Banner */}
+        {/* Main Company Header Banner (100% Real Registered Company Data) */}
         <div className="relative rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-r from-slate-900 via-sky-950 to-slate-900 border border-slate-800 text-white p-6 md:p-8 group">
           <div className="relative z-10 flex flex-col md:flex-row items-center md:items-start gap-6 text-center md:text-left">
             <div className="w-24 h-24 md:w-28 md:h-28 rounded-3xl overflow-hidden border-4 border-sky-300 shadow-2xl bg-slate-900 flex-shrink-0">
@@ -124,19 +130,19 @@ export const PublicBookingView = () => {
             <div className="space-y-2 flex-1">
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
                 <span className="px-3.5 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-sky-400 text-slate-950 shadow-md">
-                  {empresa.segmento}
+                  {empresa.segmento || 'Serviços'}
                 </span>
                 <span className="px-3.5 py-1 rounded-full text-xs font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" /> Agendamento Online Seguro
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" /> Agendamento Online Oficial
                 </span>
               </div>
 
               <h1 className="text-3xl md:text-4xl font-black tracking-tight text-white">{empresa.nome}</h1>
-              <p className="text-xs md:text-sm text-slate-300 font-medium max-w-2xl">{empresa.descricao}</p>
+              <p className="text-xs md:text-sm text-slate-300 font-medium max-w-2xl">{empresa.descricao || 'Agende seu horário online em poucos segundos.'}</p>
 
               <div className="pt-2 flex flex-wrap items-center justify-center md:justify-start gap-4 text-xs font-extrabold text-slate-300">
-                <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4 text-sky-300" /> {empresa.endereco} - {empresa.cidade}/{empresa.estado}</span>
-                <span className="flex items-center gap-1.5"><Phone className="w-4 h-4 text-emerald-400" /> {empresa.telefone}</span>
+                {empresa.endereco && <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4 text-sky-300" /> {empresa.endereco} {empresa.cidade ? `- ${empresa.cidade}/${empresa.estado}` : ''}</span>}
+                {(empresa.whatsapp || empresa.telefone) && <span className="flex items-center gap-1.5"><Phone className="w-4 h-4 text-emerald-400" /> {empresa.whatsapp || empresa.telefone}</span>}
               </div>
             </div>
           </div>
@@ -169,15 +175,17 @@ export const PublicBookingView = () => {
         {/* BOOKING STEP-BY-STEP FORM */}
         {!confirmedBooking ? (
           <form onSubmit={handleBook} className="bg-slate-900 rounded-3xl p-6 md:p-8 border border-slate-800 shadow-2xl space-y-8">
-            {/* Step 1: Select Service (WITH MOBILE HORIZONTAL SWIPE DRAG TOUCH) */}
+            {/* Step 1: Select Service (STRICT REAL SERVICES ONLY - NO DEMO DATA) */}
             <div className="space-y-4">
               <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                 <h3 className="text-xl font-black text-white flex items-center gap-2">
                   <Scissors className="w-6 h-6 text-sky-400" /> 1. Escolha o Serviço ({displayServicos.length})
                 </h3>
-                <span className="text-[11px] font-extrabold text-sky-400 flex items-center gap-1 bg-sky-950/60 px-2.5 py-1 rounded-full border border-sky-800 sm:hidden">
-                  <MoveHorizontal className="w-3.5 h-3.5 animate-pulse" /> Arraste para o lado ➔
-                </span>
+                {displayServicos.length > 0 && (
+                  <span className="text-[11px] font-extrabold text-sky-400 flex items-center gap-1 bg-sky-950/60 px-2.5 py-1 rounded-full border border-sky-800 sm:hidden">
+                    <MoveHorizontal className="w-3.5 h-3.5 animate-pulse" /> Arraste para o lado ➔
+                  </span>
+                )}
               </div>
 
               {displayServicos.length > 0 ? (
@@ -215,58 +223,74 @@ export const PublicBookingView = () => {
                   </div>
                 </div>
               ) : (
-                <div className="p-6 rounded-2xl bg-slate-950 border border-slate-800 text-center text-slate-400 text-xs font-bold">
-                  Nenhum serviço cadastrado ainda nesta empresa.
+                <div className="p-8 rounded-3xl bg-slate-950 border border-slate-800 text-center space-y-2">
+                  <Scissors className="w-8 h-8 text-slate-500 mx-auto" />
+                  <h4 className="text-base font-black text-white">Nenhum Serviço Cadastrado</h4>
+                  <p className="text-xs text-slate-400 max-w-sm mx-auto font-medium">
+                    Esta empresa ainda não cadastrou os seus serviços. Acesse o <b>Painel Admin ➔ Serviços</b> para adicionar seus valores e opções!
+                  </p>
                 </div>
               )}
             </div>
 
-            {/* Step 2: Select Professional (WITH MOBILE HORIZONTAL SWIPE DRAG TOUCH) */}
+            {/* Step 2: Select Professional */}
             <div className="space-y-4">
               <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                 <h3 className="text-xl font-black text-white flex items-center gap-2">
                   <User className="w-6 h-6 text-indigo-400" /> 2. Escolha o Profissional ({staff.length})
                 </h3>
-                <span className="text-[11px] font-extrabold text-indigo-400 flex items-center gap-1 bg-indigo-950/60 px-2.5 py-1 rounded-full border border-indigo-800 sm:hidden">
-                  <MoveHorizontal className="w-3.5 h-3.5 animate-pulse" /> Arraste para o lado ➔
-                </span>
+                {staff.length > 0 && (
+                  <span className="text-[11px] font-extrabold text-indigo-400 flex items-center gap-1 bg-indigo-950/60 px-2.5 py-1 rounded-full border border-indigo-800 sm:hidden">
+                    <MoveHorizontal className="w-3.5 h-3.5 animate-pulse" /> Arraste para o lado ➔
+                  </span>
+                )}
               </div>
 
-              <div className="w-full overflow-x-auto touch-pan-x scrollbar-thin pb-2">
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 min-w-full md:min-w-0">
-                  {staff.map(f => {
-                    const isSelected = selectedFunc?.id === f.id;
-                    const isPre = preSelectedFunc?.id === f.id;
+              {staff.length > 0 ? (
+                <div className="w-full overflow-x-auto touch-pan-x scrollbar-thin pb-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 min-w-full md:min-w-0">
+                    {staff.map(f => {
+                      const isSelected = selectedFunc?.id === f.id;
+                      const isPre = preSelectedFunc?.id === f.id;
 
-                    return (
-                      <div
-                        key={f.id}
-                        onClick={() => setSelectedFunc(f)}
-                        className={`p-4 rounded-2xl border-2 transition cursor-pointer flex items-center gap-3.5 ${
-                          isSelected 
-                            ? 'bg-indigo-500/20 border-indigo-400 shadow-lg scale-[1.01]' 
-                            : 'bg-slate-950 border-slate-800 hover:border-slate-700'
-                        }`}
-                      >
-                        <img src={f.foto} alt={f.nome} className="w-14 h-14 rounded-2xl object-cover border border-slate-700" />
-                        
-                        <div className="space-y-0.5 min-w-0 flex-1">
-                          {isPre && (
-                            <span className="px-2 py-0.5 rounded text-[9px] font-black bg-amber-400 text-slate-950 uppercase block w-fit">
-                              Link do Profissional
-                            </span>
-                          )}
-                          <h4 className="font-black text-sm text-white truncate">{f.nome}</h4>
-                          <p className="text-xs text-indigo-300 font-bold truncate">{f.cargo}</p>
+                      return (
+                        <div
+                          key={f.id}
+                          onClick={() => setSelectedFunc(f)}
+                          className={`p-4 rounded-2xl border-2 transition cursor-pointer flex items-center gap-3.5 ${
+                            isSelected 
+                              ? 'bg-indigo-500/20 border-indigo-400 shadow-lg scale-[1.01]' 
+                              : 'bg-slate-950 border-slate-800 hover:border-slate-700'
+                          }`}
+                        >
+                          <img src={f.foto} alt={f.nome} className="w-14 h-14 rounded-2xl object-cover border border-slate-700" />
+                          
+                          <div className="space-y-0.5 min-w-0 flex-1">
+                            {isPre && (
+                              <span className="px-2 py-0.5 rounded text-[9px] font-black bg-amber-400 text-slate-950 uppercase block w-fit">
+                                Link do Profissional
+                              </span>
+                            )}
+                            <h4 className="font-black text-sm text-white truncate">{f.nome}</h4>
+                            <p className="text-xs text-indigo-300 font-bold truncate">{f.cargo}</p>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="p-8 rounded-3xl bg-slate-950 border border-slate-800 text-center space-y-2">
+                  <User className="w-8 h-8 text-slate-500 mx-auto" />
+                  <h4 className="text-base font-black text-white">Nenhum Profissional Cadastrado</h4>
+                  <p className="text-xs text-slate-400 max-w-sm mx-auto font-medium">
+                    Cadastre a sua equipe em <b>Painel Admin ➔ Equipe & Profissionais</b>.
+                  </p>
+                </div>
+              )}
             </div>
 
-            {/* Step 3: Select Date & Time (WITH MOBILE HORIZONTAL SWIPE DRAG TOUCH) */}
+            {/* Step 3: Select Date & Time */}
             <div className="space-y-4">
               <h3 className="text-xl font-black text-white flex items-center gap-2 border-b border-slate-800 pb-3">
                 <CalendarIcon className="w-6 h-6 text-amber-400" /> 3. Data & Horário
@@ -286,8 +310,6 @@ export const PublicBookingView = () => {
 
                 <div>
                   <label className="block text-xs font-black uppercase text-slate-400 mb-1.5">Horários Disponíveis</label>
-                  
-                  {/* Swipeable Time Slots Container on Mobile */}
                   <div className="w-full overflow-x-auto touch-pan-x scrollbar-thin pb-2">
                     <div className="grid grid-cols-5 gap-2 min-w-[320px]">
                       {availableHours.map(h => (
@@ -357,7 +379,8 @@ export const PublicBookingView = () => {
             {/* Confirm Button */}
             <button
               type="submit"
-              className="w-full py-4 px-6 bg-gradient-to-r from-sky-500 via-cyan-500 to-emerald-500 hover:from-sky-600 hover:to-emerald-600 text-slate-950 font-black text-base md:text-lg rounded-2xl shadow-2xl transition transform hover:scale-[1.01] uppercase tracking-wider flex items-center justify-center gap-2"
+              disabled={displayServicos.length === 0 || staff.length === 0}
+              className="w-full py-4 px-6 bg-gradient-to-r from-sky-500 via-cyan-500 to-emerald-500 hover:from-sky-600 hover:to-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-black text-base md:text-lg rounded-2xl shadow-2xl transition transform hover:scale-[1.01] uppercase tracking-wider flex items-center justify-center gap-2"
             >
               <CheckCircle2 className="w-6 h-6 text-slate-950" /> Confirmar Agendamento Agora
             </button>
