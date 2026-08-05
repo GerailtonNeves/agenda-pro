@@ -34,16 +34,24 @@ export const PublicBookingView = () => {
     userRole
   } = useApp();
 
-  // STRICT COMPANY EVALUATION: Find company matching public slug, or current active company
-  const empresa = (publicBookingSlug 
-    ? empresas.find(e => e.slug === publicBookingSlug) || activeEmpresa 
-    : activeEmpresa) || empresas[0];
+  // Find professional matching slug across ALL employees
+  const targetFunc = publicEmployeeSlug
+    ? (todosFuncionarios || []).find(f => 
+        f.linkPublicoSlug === publicEmployeeSlug || 
+        (f.nome && f.nome.toLowerCase().replace(/[^a-z0-9]/g, '-') === publicEmployeeSlug)
+      )
+    : null;
 
-  // STRICT REAL DATA FILTERING: Show ONLY professionals and services registered by the user for THIS company
+  // STRICT COMPANY EVALUATION: If targetFunc is found, select its company!
+  const empresa = (targetFunc 
+    ? empresas.find(e => e.id === targetFunc.empresaId) || activeEmpresa 
+    : (publicBookingSlug ? empresas.find(e => e.slug === publicBookingSlug) || activeEmpresa : activeEmpresa)) || empresas[0];
+
+  // STRICT REAL DATA FILTERING: Show ONLY professionals and services registered for THIS company
   const staff = (todosFuncionarios || []).filter(f => f.empresaId === empresa.id);
   const displayServicos = (todosServicos || []).filter(s => s.empresaId === empresa.id);
 
-  const preSelectedFunc = publicEmployeeSlug ? staff.find(f => f.linkPublicoSlug === publicEmployeeSlug) : null;
+  const preSelectedFunc = targetFunc || (publicEmployeeSlug ? staff.find(f => f.linkPublicoSlug === publicEmployeeSlug) : null);
 
   const [selectedServico, setSelectedServico] = useState(null);
   const [selectedFunc, setSelectedFunc] = useState(null);

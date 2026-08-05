@@ -137,7 +137,7 @@ export const AppProvider = ({ children }) => {
     valor: 0
   });
 
-  // AUTOMATIC PUBLIC ROUTE DETECTOR ON PAGE MOUNT (e.g. /agendar/empresa/profissional/funcionario or /instalar/empresa)
+  // AUTOMATIC PUBLIC ROUTE DETECTOR ON PAGE MOUNT (Supports /agendar/:funcSlug, /agendar/:empSlug/profissional/:funcSlug or /instalar/:empSlug)
   useEffect(() => {
     try {
       const path = window.location.pathname;
@@ -155,15 +155,31 @@ export const AppProvider = ({ children }) => {
         const agendarIdx = parts.indexOf('agendar');
         
         if (agendarIdx !== -1 && parts[agendarIdx + 1]) {
-          const empSlug = parts[agendarIdx + 1];
+          const firstParam = parts[agendarIdx + 1];
           let funcSlug = null;
+          let empSlug = null;
 
           if (parts[agendarIdx + 2] === 'profissional' && parts[agendarIdx + 3]) {
+            empSlug = firstParam;
             funcSlug = parts[agendarIdx + 3];
+          } else {
+            // SHORT CUSTOM FORMAT: /agendar/carlos-silva
+            funcSlug = firstParam;
           }
 
-          setPublicBookingSlug(empSlug);
-          setPublicEmployeeSlug(funcSlug);
+          // Match staff across all companies
+          const matchFunc = (funcionarios || []).find(f => 
+            f.linkPublicoSlug === funcSlug || 
+            (f.nome && f.nome.toLowerCase().replace(/[^a-z0-9]/g, '-') === funcSlug)
+          );
+
+          if (matchFunc) {
+            setActiveEmpresaId(matchFunc.empresaId);
+            setPublicEmployeeSlug(funcSlug);
+          } else {
+            if (empSlug) setPublicBookingSlug(empSlug);
+            setPublicEmployeeSlug(funcSlug);
+          }
           setCurrentView('agendamentoPublico');
         }
       }

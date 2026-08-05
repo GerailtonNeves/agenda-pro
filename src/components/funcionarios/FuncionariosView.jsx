@@ -127,13 +127,14 @@ export const FuncionariosView = () => {
     setShowModal(false);
   };
 
-  // Helper to build LINK 2 (Employee Booking Link for End-User Clients)
+  // CUSTOMIZED LINK 2 FORMAT: https://gn-agenda-pro.vercel.app/agendar/[nome-do-funcionario]
   const getFullPublicLink2 = (slug) => {
-    return `${window.location.origin}/agendar/${activeEmpresa.slug}/profissional/${slug}`;
+    return `${window.location.origin}/agendar/${slug}`;
   };
 
   const handleSendLink2Whatsapp = (func) => {
-    const link2 = getFullPublicLink2(func.linkPublicoSlug || func.nome.toLowerCase().replace(/[^a-z0-9]/g, '-'));
+    const funcSlug = func.linkPublicoSlug || func.nome.toLowerCase().replace(/[^a-z0-9]/g, '-');
+    const link2 = getFullPublicLink2(funcSlug);
     const msg = `📅 *AGENDA DIRETA DO PROFISSIONAL: ${func.nome}*\n` +
       `----------------------------------------\n` +
       `Olá! Para agendar o seu horário diretamente na agenda do profissional *${func.nome}* (${func.cargo}) na empresa *${activeEmpresa.nome}*, clique no link abaixo:\n\n` +
@@ -244,7 +245,8 @@ export const FuncionariosView = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredFuncionarios.map(func => {
               const stats = calculateStaffStats(func.id, func.comissaoPct);
-              const link2Url = getFullPublicLink2(func.linkPublicoSlug || func.nome.toLowerCase().replace(/[^a-z0-9]/g, '-'));
+              const funcSlug = func.linkPublicoSlug || func.nome.toLowerCase().replace(/[^a-z0-9]/g, '-');
+              const link2Url = getFullPublicLink2(funcSlug);
 
               return (
                 <div key={func.id} className="bg-white rounded-3xl border-2 border-slate-200 hover:border-cyan-400 shadow-sm hover:shadow-md transition overflow-hidden flex flex-col justify-between">
@@ -463,9 +465,9 @@ export const FuncionariosView = () => {
               </div>
 
               <div>
-                <label className="block font-extrabold text-slate-950 mb-1">Link Público Personalizado do Profissional (Slug)</label>
+                <label className="block font-extrabold text-slate-950 mb-1">Slug do Link da Agenda (Nome Curto do Profissional)</label>
                 <div className="flex items-center gap-1 bg-slate-100 px-3 py-2 rounded-xl border border-slate-300">
-                  <span className="text-xs text-slate-500 font-mono">/agendar/.../profissional/</span>
+                  <span className="text-xs text-slate-500 font-mono">/agendar/</span>
                   <input
                     type="text"
                     placeholder="carlos-silva"
@@ -552,7 +554,8 @@ export const FuncionariosView = () => {
             <div className="grid grid-cols-2 gap-2 pt-2">
               <button
                 onClick={() => {
-                  navigator.clipboard.writeText(getFullPublicLink2(showShareModal.linkPublicoSlug || showShareModal.nome.toLowerCase().replace(/[^a-z0-9]/g, '-')));
+                  const slug = showShareModal.linkPublicoSlug || showShareModal.nome.toLowerCase().replace(/[^a-z0-9]/g, '-');
+                  navigator.clipboard.writeText(getFullPublicLink2(slug));
                   setCopiedLink('copiado');
                   setTimeout(() => setCopiedLink(''), 3000);
                 }}
