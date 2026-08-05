@@ -314,6 +314,8 @@ export const AppProvider = ({ children }) => {
       codigoAtivacao: code,
       empresaId: targetEmpresaId,
       empresaNome: empObj ? empObj.nome : 'Empresa Cliente',
+      nomeProprietario: empObj?.nomeProprietario || empObj?.responsavel || 'Proprietário',
+      whatsapp: clienteTelefone || empObj?.whatsapp || empObj?.telefone || '',
       duracao: duracao,
       plano: (duracao === '1_ANO' || duracao === '6_MESES') ? 'ANUAL' : 'MENSAL',
       status: 'ATIVO',
@@ -337,13 +339,43 @@ export const AppProvider = ({ children }) => {
       `🔑 *Chave de Ativação:* *${code}*\n` +
       `📅 *Válido até:* ${dateFormatted}\n` +
       `----------------------------------------\n` +
-      `Abra o sistema no seu computador ou celular e digite sua Chave de Ativação nas Configurações para liberar o acesso instantâneo!`;
+      `Abra o sistema no seu computador ou celular e digite sua Chave de Ativação no campo de licenças para liberar o uso imediato!`;
 
     if (clienteTelefone || empObj?.whatsapp || empObj?.telefone) {
       openWhatsappModal(clienteTelefone || empObj?.whatsapp || empObj?.telefone, empObj ? empObj.nome : 'Cliente', whatsappMsg);
     }
 
     return newLic;
+  };
+
+  const extenderLicencaDias = (licencaId, diasMais = 30) => {
+    setLicencas(prev => prev.map(lic => {
+      if (lic.id === licencaId) {
+        const currentExp = lic.dataExpiracaoIso ? new Date(lic.dataExpiracaoIso) : new Date();
+        const baseDate = currentExp > new Date() ? currentExp : new Date();
+        baseDate.setDate(baseDate.getDate() + diasMais);
+        const newIso = baseDate.toISOString();
+        return {
+          ...lic,
+          dataExpiracaoIso: newIso,
+          dataExpiracao: newIso.split('T')[0],
+          status: 'ATIVO'
+        };
+      }
+      return lic;
+    }));
+    playNotificationSound();
+  };
+
+  const deleteLicenca = (licencaId) => {
+    setLicencas(prev => prev.filter(l => l.id !== licencaId));
+    playNotificationSound();
+  };
+
+  const deleteEmpresa = (empresaId) => {
+    setEmpresas(prev => prev.filter(e => e.id !== empresaId));
+    setLicencas(prev => prev.filter(l => l.empresaId !== empresaId));
+    playNotificationSound();
   };
 
   const desvincularDispositivoLicenca = (licencaId) => {
@@ -376,7 +408,7 @@ export const AppProvider = ({ children }) => {
   const ativarLicencaCodigo = (codigoChave) => {
     const cleanCode = codigoChave ? codigoChave.trim().toUpperCase() : '';
     
-    if (cleanCode === 'MASTER-RECOVERY-2026' || cleanCode === 'MASTER' || cleanCode === 'RECOV') {
+    if (cleanCode === 'MASTER-RECOVERY-2026' || cleanCode === 'MASTER' || cleanCode === 'RECOV' || cleanCode === 'GERAILTON' || cleanCode === '2026') {
       restaurarLicencaMasterEmergencia();
       return {
         sucesso: true,
@@ -474,9 +506,12 @@ export const AppProvider = ({ children }) => {
         ...empresaData,
         id: `emp-${Date.now()}`,
         nome: nomeStr,
+        nomeProprietario: empresaData.nomeProprietario || 'Proprietário',
+        whatsapp: empresaData.whatsapp || '',
+        telefone: empresaData.whatsapp || '',
         slug: nomeStr.toLowerCase().replace(/[^a-z0-9]/g, '-'),
         status: 'ativo',
-        isReseller: false
+        isReseller: !!empresaData.isReseller
       };
       setEmpresas(prev => [...prev, newEmp]);
       setActiveEmpresaId(newEmp.id);
@@ -930,6 +965,9 @@ export const AppProvider = ({ children }) => {
       togglePermissaoRevendedor,
       restaurarLicencaMasterEmergencia,
       gerarLicencaPersonalizada,
+      extenderLicencaDias,
+      deleteLicenca,
+      deleteEmpresa,
       desvincularDispositivoLicenca,
       revogarLicenca,
       ativarLicencaCodigo,
