@@ -1,6 +1,6 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
-import { Bell, Calendar, Clock, User, Scissors, DollarSign, X, CheckCircle2, Phone } from 'lucide-react';
+import { Bell, Calendar, Clock, User, Scissors, DollarSign, X, CheckCircle2, Phone, Globe, Sparkles } from 'lucide-react';
 
 export const NewAppointmentToastModal = () => {
   const { newAppointmentToast, setNewAppointmentToast, setCurrentView, openWhatsappModal } = useApp();
@@ -19,7 +19,7 @@ export const NewAppointmentToastModal = () => {
   };
 
   const handleWhatsappConfirm = () => {
-    const msg = `Olá *${age.clienteNome}*! 👋 Recebemos o seu agendamento de *${age.servicoNome}* para o dia *${age.data} às ${age.horario}*!\n\nEm breve te aguardamos no estabelecimento!`;
+    const msg = `Olá *${age.clienteNome}*! 👋 Recebemos o seu agendamento realizado no nosso *LINK PÚBLICO DA AGENDA* para o serviço *${age.servicoNome}* com *${age.funcionarioNome}* no dia *${age.data} às ${age.horario}*!\n\nConfirmamos seu horário com sucesso! Te aguardamos.`;
     openWhatsappModal(age.clienteTelefone || age.clienteWhatsapp, age.clienteNome, msg);
     handleClose();
   };
@@ -29,14 +29,14 @@ export const NewAppointmentToastModal = () => {
       <div className="bg-slate-900 text-white rounded-3xl p-6 shadow-2xl border-2 border-sky-400 space-y-4">
         <div className="flex justify-between items-start border-b border-slate-800 pb-3">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-sky-500 text-white rounded-2xl animate-bounce shadow-md">
-              <Bell className="w-6 h-6" />
+            <div className="p-3 bg-gradient-to-tr from-sky-500 to-cyan-400 text-white rounded-2xl animate-bounce shadow-md">
+              <Globe className="w-6 h-6" />
             </div>
             <div>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-400 text-slate-950 uppercase tracking-wider">
-                Novo Agendamento Ao Vivo!
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-cyan-400 text-slate-950 uppercase tracking-wider flex items-center gap-1 w-fit">
+                <Sparkles className="w-3 h-3 text-slate-950" /> LINK PÚBLICO DA AGENDA
               </span>
-              <h3 className="font-black text-lg text-white">Chegou um Novo Agendamento</h3>
+              <h3 className="font-black text-lg text-white">Novo Agendamento Online!</h3>
             </div>
           </div>
 
@@ -46,8 +46,8 @@ export const NewAppointmentToastModal = () => {
         </div>
 
         {/* Details Card */}
-        <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2 text-sm">
-          <div className="flex justify-between items-center">
+        <div className="bg-slate-950 p-4 rounded-2xl border border-sky-500/30 space-y-2 text-sm">
+          <div className="flex justify-between items-center border-b border-slate-800 pb-2">
             <span className="font-black text-base text-white flex items-center gap-1.5">
               <User className="w-4 h-4 text-sky-400" /> {age.clienteNome}
             </span>
@@ -64,25 +64,29 @@ export const NewAppointmentToastModal = () => {
             <Calendar className="w-4 h-4 text-amber-400" /> Data: <b className="text-white font-mono">{age.data} às {age.horario}</b>
           </p>
 
-          <p className="text-xs text-slate-400 font-semibold">
+          <p className="text-xs text-slate-400 font-semibold flex items-center gap-1">
             Profissional: <b className="text-white">{age.funcionarioNome}</b>
           </p>
+
+          <div className="pt-1 flex items-center gap-1 text-[11px] font-black text-sky-300">
+            <Globe className="w-3.5 h-3.5 text-sky-400" /> Realizado diretamente pelo seu Link da Agenda!
+          </div>
         </div>
 
         {/* Action Buttons */}
         <div className="grid grid-cols-2 gap-2 pt-1">
           <button
             onClick={handleViewAgenda}
-            className="py-3 px-4 rounded-xl bg-sky-500 hover:bg-sky-600 text-white text-xs font-black transition flex items-center justify-center gap-1.5 shadow-md"
+            className="py-3 px-4 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-black transition flex items-center justify-center gap-1.5 shadow-md"
           >
-            <Calendar className="w-4 h-4" /> Abrir na Agenda
+            <Calendar className="w-4 h-4" /> Ver na Agenda
           </button>
 
           <button
             onClick={handleWhatsappConfirm}
-            className="py-3 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-black transition flex items-center justify-center gap-1.5 shadow-md"
+            className="py-3 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-xs transition flex items-center justify-center gap-1.5 shadow-md uppercase"
           >
-            <Phone className="w-4 h-4" /> Confirmar WhatsApp
+            <Phone className="w-4 h-4 text-slate-950" /> Confirmar WhatsApp
           </button>
         </div>
       </div>

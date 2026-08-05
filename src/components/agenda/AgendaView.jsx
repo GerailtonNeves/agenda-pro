@@ -16,7 +16,9 @@ import {
   Share2,
   CalendarDays,
   Edit3,
-  Trash2
+  Trash2,
+  Globe,
+  Sparkles
 } from 'lucide-react';
 
 export const AgendaView = () => {
@@ -83,10 +85,10 @@ export const AgendaView = () => {
     setShowAddModal(true);
   };
 
-  const handleSaveForm = (e) => {
+  const handleSaveSubmit = (e) => {
     e.preventDefault();
     if (!formClienteNome || !formFuncionarioId || !formServicoId) {
-      alert('Preencha todos os campos obrigatórios!');
+      alert('Preencha os campos obrigatórios (*)');
       return;
     }
 
@@ -99,7 +101,7 @@ export const AgendaView = () => {
         servicoId: formServicoId,
         data: formData,
         horario: formHorario,
-        valor: Number(formValor) || 50,
+        valor: Number(formValor),
         observacoes: formObs
       });
     } else {
@@ -110,89 +112,102 @@ export const AgendaView = () => {
         servicoId: formServicoId,
         data: formData,
         horario: formHorario,
-        valor: Number(formValor) || 50,
-        observacoes: formObs
+        valor: Number(formValor),
+        observacoes: formObs,
+        origem: 'PAINEL_ADMIN'
       });
     }
 
     setShowAddModal(false);
   };
 
-  const handleDelete = (id, clientName) => {
-    if (window.confirm(`Tem certeza que deseja excluir o agendamento de "${clientName}"?`)) {
+  const handleDelete = (id, nome) => {
+    if (window.confirm(`Tem certeza que deseja cancelar e remover o agendamento de "${nome}"?`)) {
       deleteAgendamento(id);
     }
   };
 
   const statusColors = {
-    agendado: { bg: '#e0f2fe', text: '#0369a1', border: '#0284c7' },
-    confirmado: { bg: '#fef9c3', text: '#a16207', border: '#eab308' },
-    concluido: { bg: '#d1fae5', text: '#047857', border: '#10b981' },
-    cancelado: { bg: '#fee2e2', text: '#b91c1c', border: '#ef4444' },
-    faltou: { bg: '#f3f4f6', text: '#374151', border: '#6b7280' }
+    agendado: { bg: '#e0f2fe', text: '#0369a1', border: '#0284c7', label: 'Agendado' },
+    confirmado: { bg: '#fef9c3', text: '#854d0e', border: '#eab308', label: 'Confirmado' },
+    concluido: { bg: '#dcfce7', text: '#166534', border: '#10b981', label: 'Concluído' },
+    cancelado: { bg: '#fee2e2', text: '#991b1b', border: '#ef4444', label: 'Cancelado' },
+    faltou: { bg: '#f3f4f6', text: '#374151', border: '#6b7280', label: 'Faltou' }
   };
 
-  const timeSlots = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
+  const timeSlots = [
+    '08:00', '09:00', '10:00', '11:00', '12:00',
+    '13:00', '14:00', '15:00', '16:00', '17:00',
+    '18:00', '19:00', '20:00'
+  ];
 
-  const getWeekDays = (baseDateStr) => {
-    const curr = new Date(baseDateStr + 'T12:00:00');
-    const dayOfWeek = curr.getDay();
-    const distanceToMonday = (dayOfWeek === 0 ? -6 : 1 - dayOfWeek);
-    
-    const monday = new Date(curr);
-    monday.setDate(curr.getDate() + distanceToMonday);
+  // Helper for Weekly Calendar
+  const getWeekDates = (baseDateStr) => {
+    const current = new Date(baseDateStr + 'T00:00:00');
+    const dayOfWeek = current.getDay();
+    const distanceToMonday = (dayOfWeek + 6) % 7;
+    const monday = new Date(current);
+    monday.setDate(current.getDate() - distanceToMonday);
 
-    const weekDays = [];
+    const days = [];
     for (let i = 0; i < 7; i++) {
       const d = new Date(monday);
       d.setDate(monday.getDate() + i);
       const iso = d.toISOString().split('T')[0];
-      const dayName = d.toLocaleDateString('pt-BR', { weekday: 'short' });
-      const dayFormatted = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-      weekDays.push({ iso, dayName, dayFormatted });
+      days.push({
+        iso,
+        dayNum: d.getDate(),
+        dayName: d.toLocaleDateString('pt-BR', { weekday: 'short' }),
+        dayFormatted: d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+      });
     }
-    return weekDays;
+    return days;
   };
 
-  const getMonthDays = (baseDateStr) => {
-    const [yearStr, monthStr] = baseDateStr.split('-');
-    const year = parseInt(yearStr, 10);
-    const month = parseInt(monthStr, 10) - 1;
+  const weekDaysList = getWeekDates(selectedDate);
 
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
+  // Helper for Monthly Calendar
+  const getMonthDaysList = (baseDateStr) => {
+    const current = new Date(baseDateStr + 'T00:00:00');
+    const year = current.getFullYear();
+    const month = current.getMonth();
 
-    const totalDays = lastDay.getDate();
-    const startDayOfWeek = firstDay.getDay();
+    const firstDayOfMonth = new Date(year, month, 1);
+    const lastDayOfMonth = new Date(year, month + 1, 0);
 
-    const monthDays = [];
-    const paddingCount = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1;
-    for (let i = 0; i < paddingCount; i++) {
-      monthDays.push({ isPadding: true, dayNum: '' });
+    const paddingDays = (firstDayOfMonth.getDay() + 6) % 7;
+    const totalDays = lastDayOfMonth.getDate();
+
+    const list = [];
+    for (let i = 0; i < paddingDays; i++) {
+      list.push({ isPadding: true });
     }
 
-    for (let d = 1; d <= totalDays; d++) {
-      const dStr = String(d).padStart(2, '0');
-      const mStr = String(month + 1).padStart(2, '0');
-      const iso = `${year}-${mStr}-${dStr}`;
-      monthDays.push({ isPadding: false, dayNum: d, iso });
+    for (let i = 1; i <= totalDays; i++) {
+      const d = new Date(year, month, i);
+      const iso = d.toISOString().split('T')[0];
+      list.push({
+        isPadding: false,
+        iso,
+        dayNum: i,
+        dateObj: d
+      });
     }
 
-    return monthDays;
+    return list;
   };
 
-  const weekDaysList = getWeekDays(selectedDate);
-  const monthDaysList = getMonthDays(selectedDate);
+  const monthDaysList = getMonthDaysList(selectedDate);
 
   return (
-    <div className="space-y-6 animate-fadeIn">
-      {/* Top Controls Header */}
+    <div className="space-y-6 animate-fadeIn text-slate-950">
+      {/* Header Bar */}
       <div className="bg-white text-slate-950 p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl md:text-3xl font-black text-slate-950 flex items-center gap-2.5">
             <CalendarIcon className="w-8 h-8 text-sky-600" /> Agenda Interativa Multi-Profissional
           </h2>
-          <p className="text-sm text-slate-600 font-bold mt-1">Controle completo com alteração de status e baixa automática</p>
+          <p className="text-sm text-slate-600 font-bold mt-1">Controle completo dos agendamentos presenciais e dos realizados pelo Link Público</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -258,14 +273,14 @@ export const AgendaView = () => {
       {/* MODE 1: WEEKLY CALENDAR VIEW (SEMANAL) */}
       {mode === 'semanal' && (
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 overflow-x-auto">
-          <h3 className="text-xl font-black text-slate-950 mb-4 pb-2 border-b border-slate-200 flex items-center justify-between">
-            <span>Visão Semanal de Compromissos (7 Dias)</span>
-            <span className="text-xs font-mono font-bold text-sky-700">Semana: {weekDaysList[0]?.dayFormatted} até {weekDaysList[6]?.dayFormatted}</span>
-          </h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-7 gap-4 min-w-[900px]">
+          <div className="grid grid-cols-7 gap-3 min-w-[900px]">
             {weekDaysList.map(wDay => {
-              const dayAges = filteredAgendamentos.filter(a => a.data === wDay.iso);
+              const dayAges = agendamentos.filter(a => {
+                const matchDate = a.data === wDay.iso;
+                const matchStaff = filterStaff === 'todos' ? true : a.funcionarioId === filterStaff;
+                return matchDate && matchStaff;
+              });
+
               const isToday = wDay.iso === new Date().toISOString().split('T')[0];
 
               return (
@@ -307,6 +322,13 @@ export const AgendaView = () => {
                             <p className="text-[11px] font-extrabold text-slate-800 truncate">{age.servicoNome}</p>
                             <p className="text-[10px] font-semibold text-slate-600 truncate">✂️ {age.funcionarioNome}</p>
 
+                            {/* Public Link Origin Badge */}
+                            {age.origem === 'LINK_PUBLICO' && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-cyan-100 text-cyan-950 border border-cyan-300 flex items-center gap-1 w-fit">
+                                <Globe className="w-3 h-3 text-cyan-700" /> Link Público
+                              </span>
+                            )}
+
                             <div className="pt-1.5 flex flex-wrap gap-1 items-center justify-between border-t border-black/10">
                               <button
                                 onClick={() => updateAgendamentoStatus(age.id, 'concluido')}
@@ -331,13 +353,6 @@ export const AgendaView = () => {
                               >
                                 <Trash2 className="w-3 h-3" />
                               </button>
-
-                              <button
-                                onClick={() => openReceiptModal(age)}
-                                className="px-2 py-0.5 rounded bg-slate-950 text-white text-[10px] font-black hover:bg-slate-800 ml-auto"
-                              >
-                                Recibo
-                              </button>
                             </div>
                           </div>
                         );
@@ -353,15 +368,8 @@ export const AgendaView = () => {
 
       {/* MODE 2: MONTHLY CALENDAR VIEW (MENSAL) */}
       {mode === 'mensal' && (
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4 text-slate-950">
-          <h3 className="text-xl font-black text-slate-950 pb-2 border-b border-slate-200 flex items-center justify-between">
-            <span>Visão Mensal de Agendamentos</span>
-            <span className="text-sm font-mono font-black text-sky-700 uppercase">
-              {new Date(selectedDate + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
-            </span>
-          </h3>
-
-          <div className="grid grid-cols-7 gap-2 text-center text-xs font-black uppercase text-slate-500 pb-2 border-b border-slate-200">
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 overflow-x-auto">
+          <div className="grid grid-cols-7 gap-2 min-w-[700px] mb-2 font-black text-xs text-slate-500 uppercase text-center">
             <div>Seg</div>
             <div>Ter</div>
             <div>Qua</div>
@@ -371,13 +379,18 @@ export const AgendaView = () => {
             <div>Dom</div>
           </div>
 
-          <div className="grid grid-cols-7 gap-2">
+          <div className="grid grid-cols-7 gap-2 min-w-[700px]">
             {monthDaysList.map((mDay, idx) => {
               if (mDay.isPadding) {
                 return <div key={`pad-${idx}`} className="h-28 bg-slate-50/40 rounded-2xl border border-dashed border-slate-200" />;
               }
 
-              const dayAges = filteredAgendamentos.filter(a => a.data === mDay.iso);
+              const dayAges = agendamentos.filter(a => {
+                const matchDate = a.data === mDay.iso;
+                const matchStaff = filterStaff === 'todos' ? true : a.funcionarioId === filterStaff;
+                return matchDate && matchStaff;
+              });
+
               const isSelected = mDay.iso === selectedDate;
               const faturamentoDia = dayAges.reduce((acc, c) => acc + (c.valor || 0), 0);
 
@@ -407,8 +420,9 @@ export const AgendaView = () => {
 
                   <div className="space-y-1">
                     {dayAges.slice(0, 2).map(age => (
-                      <div key={age.id} className="text-[10px] font-extrabold truncate px-1.5 py-0.5 rounded bg-slate-100 text-slate-950 border border-slate-200">
-                        {age.horario} - {age.clienteNome}
+                      <div key={age.id} className="text-[10px] font-extrabold truncate px-1.5 py-0.5 rounded bg-slate-100 text-slate-950 border border-slate-200 flex items-center justify-between">
+                        <span className="truncate">{age.horario} - {age.clienteNome}</span>
+                        {age.origem === 'LINK_PUBLICO' && <span title="Via Link Público">🌐</span>}
                       </div>
                     ))}
 
@@ -459,7 +473,14 @@ export const AgendaView = () => {
                           >
                             <div className="flex justify-between items-start">
                               <div>
-                                <h4 className="font-black text-base text-slate-950">{age.clienteNome}</h4>
+                                <div className="flex items-center gap-2">
+                                  <h4 className="font-black text-base text-slate-950">{age.clienteNome}</h4>
+                                  {age.origem === 'LINK_PUBLICO' && (
+                                    <span className="px-2 py-0.5 rounded text-[9px] font-black bg-cyan-100 text-cyan-950 border border-cyan-300 flex items-center gap-1">
+                                      <Globe className="w-3 h-3 text-cyan-700" /> Link Público
+                                    </span>
+                                  )}
+                                </div>
                                 <p className="text-sm font-extrabold text-slate-800">{age.servicoNome}</p>
                               </div>
                               <span className="text-sm font-mono font-black px-3 py-1 rounded-full bg-white text-slate-950 shadow-xs border border-slate-200">
@@ -532,122 +553,115 @@ export const AgendaView = () => {
         </div>
       )}
 
-      {/* MODE 4: LIST VIEW */}
+      {/* MODE 4: LIST VIEW (LISTA COMPLETA) */}
       {mode === 'lista' && (
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 overflow-x-auto">
-          <table className="w-full text-left text-sm border-collapse">
+          <table className="w-full text-left text-sm border-collapse min-w-[700px]">
             <thead>
               <tr className="border-b border-slate-200 text-slate-500 font-black uppercase text-xs">
-                <th className="py-3.5 px-4">Cliente</th>
-                <th className="py-3.5 px-4">Serviço</th>
-                <th className="py-3.5 px-4">Profissional</th>
-                <th className="py-3.5 px-4">Data/Horário</th>
-                <th className="py-3.5 px-4">Valor</th>
-                <th className="py-3.5 px-4">Status</th>
-                <th className="py-3.5 px-4 text-right">Ações</th>
+                <th className="py-3 px-4">Origem</th>
+                <th className="py-3 px-4">Data & Horário</th>
+                <th className="py-3 px-4">Cliente</th>
+                <th className="py-3 px-4">Serviço</th>
+                <th className="py-3 px-4">Profissional</th>
+                <th className="py-3 px-4">Valor</th>
+                <th className="py-3 px-4">Status</th>
+                <th className="py-3 px-4 text-right">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-950 font-bold">
-              {filteredAgendamentos.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-10 text-center text-slate-500 text-sm font-semibold">
-                    Nenhum agendamento encontrado para os filtros selecionados.
-                  </td>
-                </tr>
-              ) : (
-                filteredAgendamentos.map(age => (
+              {filteredAgendamentos.map(age => {
+                const style = statusColors[age.status] || statusColors.agendado;
+                return (
                   <tr key={age.id} className="hover:bg-slate-50 transition">
-                    <td className="py-4 px-4 font-black text-slate-950 text-base">
-                      {age.clienteNome}
-                      <span className="block text-xs text-slate-500 font-semibold">{age.clienteTelefone}</span>
+                    <td className="py-4 px-4 whitespace-nowrap">
+                      {age.origem === 'LINK_PUBLICO' ? (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-black bg-cyan-100 text-cyan-950 border border-cyan-300 flex items-center gap-1 w-fit">
+                          <Globe className="w-3 h-3 text-cyan-700" /> Link Público
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-black bg-slate-100 text-slate-700 border border-slate-200">
+                          Interno
+                        </span>
+                      )}
                     </td>
-                    <td className="py-4 px-4 text-slate-800 font-bold text-sm">{age.servicoNome}</td>
-                    <td className="py-4 px-4 text-slate-800 font-bold text-sm">{age.funcionarioNome}</td>
-                    <td className="py-4 px-4 font-mono font-black text-slate-950 text-sm">{age.data} às {age.horario}</td>
-                    <td className="py-4 px-4 font-black text-slate-950 text-base">R$ {age.valor.toFixed(2)}</td>
-                    <td className="py-4 px-4">
-                      <select
-                        value={age.status}
-                        onChange={(e) => updateAgendamentoStatus(age.id, e.target.value)}
-                        className="px-3 py-1.5 rounded-xl text-xs font-black outline-none border border-slate-300"
-                        style={{ backgroundColor: statusColors[age.status]?.bg, color: statusColors[age.status]?.text }}
-                      >
-                        <option value="agendado">Agendado</option>
-                        <option value="confirmado">Confirmado</option>
-                        <option value="concluido">Concluído (Baixa)</option>
-                        <option value="cancelado">Cancelado</option>
-                        <option value="faltou">Faltou</option>
-                      </select>
+                    <td className="py-4 px-4 font-mono whitespace-nowrap">
+                      <span className="font-black text-slate-950">{age.data}</span> às <span className="text-sky-700 font-black">{age.horario}</span>
                     </td>
-                    <td className="py-4 px-4 text-right space-x-1.5">
-                      <button
-                        onClick={() => updateAgendamentoStatus(age.id, 'concluido')}
-                        className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-xs"
-                        title="Dar Baixa (Concluir)"
-                      >
-                        Baixa
-                      </button>
-                      <button
-                        onClick={() => openEdit(age)}
-                        className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 font-black text-xs text-slate-900 border border-slate-300"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => openReceiptModal(age)}
-                        className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-black text-xs"
-                      >
-                        Recibo
-                      </button>
-                      <button
-                        onClick={() => handleDelete(age.id, age.clienteNome)}
-                        className="px-2.5 py-1.5 rounded-xl bg-rose-100 text-rose-800 hover:bg-rose-200 font-black text-xs"
-                      >
-                        Excluir
-                      </button>
+                    <td className="py-4 px-4 font-black text-slate-950">{age.clienteNome}</td>
+                    <td className="py-4 px-4 text-slate-800">{age.servicoNome}</td>
+                    <td className="py-4 px-4 text-slate-800">{age.funcionarioNome}</td>
+                    <td className="py-4 px-4 font-mono font-black text-emerald-600">R$ {age.valor.toFixed(2)}</td>
+                    <td className="py-4 px-4 whitespace-nowrap">
+                      <span className="px-3 py-1 rounded-full text-xs font-black" style={{ backgroundColor: style.bg, color: style.text }}>
+                        {style.label}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4 text-right whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => updateAgendamentoStatus(age.id, 'concluido')}
+                          className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-black text-xs shadow-xs"
+                          title="Dar Baixa"
+                        >
+                          Baixa
+                        </button>
+                        <button
+                          onClick={() => openEdit(age)}
+                          className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(age.id, age.clienteNome)}
+                          className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
-                ))
-              )}
+                );
+              })}
             </tbody>
           </table>
         </div>
       )}
 
-      {/* Create / Edit Appointment Modal Form */}
+      {/* MODAL FORM FOR CREATING & EDITING APPOINTMENTS */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/75 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-100 animate-scaleUp text-slate-950">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-100 animate-scaleUp">
             <div className="px-6 py-4 bg-gradient-to-r from-sky-600 to-emerald-500 text-white flex justify-between items-center">
               <h3 className="font-black text-lg">
-                {editingAge ? 'Editar Agendamento' : 'Novo Agendamento Manual'}
+                {editingAge ? 'Editar Agendamento' : 'Novo Agendamento Presencial'}
               </h3>
               <button onClick={() => setShowAddModal(false)} className="p-1 rounded-full hover:bg-white/20">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveForm} className="p-6 space-y-4 text-sm font-semibold text-slate-950">
+            <form onSubmit={handleSaveSubmit} className="p-6 space-y-4 text-sm font-semibold text-slate-950">
               <div>
-                <label className="block font-extrabold text-slate-950 mb-1">Nome do Cliente *</label>
+                <label className="block font-extrabold text-slate-950 mb-1">Nome Completo do Cliente *</label>
                 <input
                   type="text"
                   required
-                  placeholder="Ex: Gabriel Souza"
+                  placeholder="Ex: João da Silva"
                   value={formClienteNome}
                   onChange={(e) => setFormClienteNome(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 font-bold text-base outline-none focus:ring-2 focus:ring-sky-500"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-slate-950 font-bold outline-none focus:ring-2 focus:ring-sky-500"
                 />
               </div>
 
               <div>
-                <label className="block font-extrabold text-slate-950 mb-1">WhatsApp / Telefone</label>
+                <label className="block font-extrabold text-slate-950 mb-1">Telefone / WhatsApp do Cliente</label>
                 <input
                   type="text"
-                  placeholder="(11) 98888-7777"
+                  placeholder="(11) 99999-8888"
                   value={formClienteTelefone}
                   onChange={(e) => setFormClienteTelefone(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 font-bold text-base outline-none focus:ring-2 focus:ring-sky-500"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-slate-950 font-bold outline-none focus:ring-2 focus:ring-sky-500"
                 />
               </div>
 
@@ -658,9 +672,8 @@ export const AgendaView = () => {
                     required
                     value={formFuncionarioId}
                     onChange={(e) => setFormFuncionarioId(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 font-bold text-sm outline-none focus:ring-2 focus:ring-sky-500"
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-slate-950 font-bold outline-none focus:ring-2 focus:ring-sky-500"
                   >
-                    <option value="">Selecione...</option>
                     {funcionarios.map(f => (
                       <option key={f.id} value={f.id}>{f.nome}</option>
                     ))}
@@ -673,16 +686,14 @@ export const AgendaView = () => {
                     required
                     value={formServicoId}
                     onChange={(e) => {
-                      const sId = e.target.value;
-                      setFormServicoId(sId);
-                      const sObj = servicos.find(s => s.id === sId);
+                      setFormServicoId(e.target.value);
+                      const sObj = servicos.find(s => s.id === e.target.value);
                       if (sObj) setFormValor(sObj.preco);
                     }}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 font-bold text-sm outline-none focus:ring-2 focus:ring-sky-500"
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-slate-950 font-bold outline-none focus:ring-2 focus:ring-sky-500"
                   >
-                    <option value="">Selecione...</option>
                     {servicos.map(s => (
-                      <option key={s.id} value={s.id}>{s.nome} (R$ {s.preco.toFixed(2)})</option>
+                      <option key={s.id} value={s.id}>{s.nome} (R$ {s.preco})</option>
                     ))}
                   </select>
                 </div>
@@ -696,7 +707,7 @@ export const AgendaView = () => {
                     required
                     value={formData}
                     onChange={(e) => setFormData(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 font-bold text-xs outline-none focus:ring-2 focus:ring-sky-500"
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 font-mono font-bold outline-none focus:ring-2 focus:ring-sky-500"
                   />
                 </div>
 
@@ -707,46 +718,47 @@ export const AgendaView = () => {
                     required
                     value={formHorario}
                     onChange={(e) => setFormHorario(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 font-bold text-xs outline-none focus:ring-2 focus:ring-sky-500"
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 font-mono font-bold outline-none focus:ring-2 focus:ring-sky-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-extrabold text-slate-950 mb-1">Valor (R$) *</label>
+                  <label className="block font-extrabold text-emerald-700 mb-1">Valor (R$)</label>
                   <input
                     type="number"
                     step="0.01"
                     required
                     value={formValor}
                     onChange={(e) => setFormValor(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 font-black text-xs outline-none focus:ring-2 focus:ring-sky-500"
+                    className="w-full px-3 py-2.5 rounded-xl border-2 border-emerald-400 font-mono font-black text-emerald-800 bg-emerald-50 outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block font-extrabold text-slate-950 mb-1">Observações Internas</label>
-                <textarea
-                  rows={2}
+                <label className="block font-extrabold text-slate-950 mb-1">Observações (Opcional)</label>
+                <input
+                  type="text"
+                  placeholder="Ex: Cliente novo, prefere navalha..."
                   value={formObs}
                   onChange={(e) => setFormObs(e.target.value)}
-                  className="w-full p-4 rounded-xl border border-slate-300 font-semibold text-sm outline-none focus:ring-2 focus:ring-sky-500"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-slate-950 font-bold outline-none focus:ring-2 focus:ring-sky-500"
                 />
               </div>
 
-              <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
+              <div className="flex justify-end gap-3 pt-2 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2.5 rounded-xl text-slate-700 hover:bg-slate-100 font-bold"
+                  className="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-100 font-bold"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 rounded-xl text-white font-extrabold text-sm bg-gradient-to-r from-sky-600 to-emerald-500 hover:from-sky-700 hover:to-emerald-600 shadow-md"
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-sky-600 to-emerald-500 text-white font-extrabold shadow-md hover:from-sky-700 hover:to-emerald-600"
                 >
-                  {editingAge ? 'Salvar Alterações' : 'Salvar Agendamento'}
+                  Salvar Agendamento
                 </button>
               </div>
             </form>
