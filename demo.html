@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgendaPro SaaS - Demonstração Standalone</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>body { font-family: 'Plus Jakarta Sans', sans-serif; }</style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    function DemoApp() {
+      return (
+        <div className="min-h-screen flex items-center justify-center p-6 text-center">
+          <div className="max-w-lg bg-white p-8 rounded-3xl shadow-2xl border border-slate-200 space-y-4">
+            <div className="w-16 h-16 bg-gradient-to-tr from-sky-500 to-emerald-400 text-slate-950 font-black text-2xl rounded-2xl mx-auto flex items-center justify-center">
+              ⚡
+            </div>
+            <h1 className="text-2xl font-black text-slate-900">AgendaPro SaaS Multi-tenant</h1>
+            <p className="text-xs text-slate-500">
+              O sistema foi completamente compilado em módulos React + Vite!
+            </p>
+
+            <div className="p-4 rounded-2xl bg-cyan-50 border border-cyan-200 text-xs font-bold text-cyan-900 text-left space-y-2">
+              <p>📍 Para rodar a aplicação em desenvolvimento:</p>
+              <code className="block bg-slate-900 text-emerald-400 p-3 rounded-xl font-mono text-[11px]">
+                cd C:\Users\Gerailton\.gemini\antigravity\scratch\saas-agendamento-multitenant<br/>
+                npm run dev
+              </code>
+            </div>
+
+            <p className="text-[11px] text-slate-400">Build de produção gerado com sucesso na pasta <code className="font-bold">dist/</code>.</p>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<DemoApp />);
+  </script>
+</body>
+</html>
