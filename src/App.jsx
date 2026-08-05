@@ -29,6 +29,7 @@ import { LembretesView } from './components/lembretes/LembretesView';
 import { NotificacoesView } from './components/notificacoes/NotificacoesView';
 import { RelatoriosView } from './components/relatorios/RelatoriosView';
 import { ConfiguracoesView } from './components/configuracoes/ConfiguracoesView';
+import { SupabaseView } from './components/supabase/SupabaseView';
 
 // Public & SuperAdmin Views
 import { PublicBookingView } from './components/public/PublicBookingView';
@@ -83,6 +84,8 @@ export function App() {
         return <NotificacoesView />;
       case 'relatorios':
         return <RelatoriosView />;
+      case 'supabase':
+        return <SupabaseView />;
       case 'configuracoes':
         return <ConfiguracoesView />;
       case 'superadmin':
@@ -98,60 +101,63 @@ export function App() {
       <div className="lg:hidden bg-slate-900 text-white px-4 py-3 border-b border-slate-800 flex items-center justify-between sticky top-0 z-40 shadow-md">
         <div className="flex items-center gap-2">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-sky-400 via-sky-300 to-cyan-300 text-slate-950 flex items-center justify-center font-black">
-            <Sparkles className="w-5 h-5 text-slate-950" />
+            <Sparkles className="w-5 h-5" />
           </div>
-          <span className="font-black text-lg text-white">Agenda<span className="text-sky-300">Pro</span></span>
+          <div>
+            <h1 className="font-black text-base tracking-tight text-white leading-tight">
+              Agenda<span className="text-sky-400">Pro</span>
+            </h1>
+            <span className="text-[9px] font-extrabold uppercase tracking-widest text-slate-400 block">
+              SaaS Multi-Empresa
+            </span>
+          </div>
         </div>
 
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="p-2 rounded-xl bg-slate-800 text-sky-300 border border-slate-700 font-bold flex items-center gap-1 text-xs"
+          className="p-2 rounded-xl bg-slate-800 text-white hover:bg-slate-700 transition border border-slate-700"
+          aria-label="Alternar Menu Lateral"
         >
           {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          <span>Menu</span>
         </button>
       </div>
 
-      {/* Desktop Sidebar & Mobile Drawer Overlay */}
-      <div className={`fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-xs lg:static lg:z-auto transition-opacity ${
-        mobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none lg:opacity-100 lg:pointer-events-auto'
-      }`}>
-        <div className={`w-72 h-[100dvh] max-h-screen bg-slate-900 text-white border-r border-slate-800 flex flex-col transition-transform duration-300 ${
-          mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-        }`}>
-          <Sidebar onItemClick={() => setMobileMenuOpen(false)} />
+      {/* Slide-out Mobile Sidebar Overlay */}
+      {mobileMenuOpen && (
+        <div 
+          className="lg:hidden fixed inset-0 bg-slate-950/80 backdrop-blur-xs z-50 animate-fadeIn"
+          onClick={() => setMobileMenuOpen(false)}
+        >
+          <div 
+            className="w-72 h-full bg-slate-950 text-white shadow-2xl animate-slideInLeft"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Sidebar onItemClick={() => setMobileMenuOpen(false)} />
+          </div>
         </div>
+      )}
+
+      {/* Desktop Persistent Left Sidebar */}
+      <div className="hidden lg:block h-screen sticky top-0 z-30">
+        <Sidebar />
       </div>
 
-      {/* Main Content Area */}
+      {/* Main App Content View Container */}
       <div className="flex-1 flex flex-col min-w-0 min-h-screen">
         <Navbar />
-
         <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto space-y-6">
           {renderView()}
         </main>
       </div>
 
-      {/* License Expiration Emergency Modal Protection */}
-      <LicenseExpiredLockModal />
-
-      {/* New Appointment Pop-up Toast Notification */}
-      <NewAppointmentToastModal />
-
-      {/* Floating 1-Click PWA App Installation Button */}
-      <PwaInstallModal />
-
-      {/* Global Image Uploader Modal */}
+      {/* Global Interactive Modals & Toasts */}
       <ImageUploaderModal />
-
-      {/* Global WhatsApp Direct Dispatch Modal */}
       <WhatsAppModal />
-
-      {/* Printable Receipt Modal */}
       <ReceiptModal />
-
-      {/* Budget / Quotation Modal */}
       <BudgetModal />
+      <LicenseExpiredLockModal />
+      <NewAppointmentToastModal />
+      <PwaInstallModal />
     </div>
   );
 }

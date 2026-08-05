@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { SupabaseView } from '../supabase/SupabaseView';
 import { 
   Settings, 
   Building2, 
@@ -13,7 +14,8 @@ import {
   Save,
   Sparkles,
   Palette,
-  Check
+  Check,
+  Database
 } from 'lucide-react';
 
 export const ConfiguracoesView = () => {
@@ -25,7 +27,8 @@ export const ConfiguracoesView = () => {
     licenseValidation, 
     ativarLicencaCodigo,
     systemTheme,
-    setSystemTheme
+    setSystemTheme,
+    isResellerAuthorized
   } = useApp();
 
   const [nome, setNome] = useState(activeEmpresa.nome || '');
@@ -73,24 +76,153 @@ export const ConfiguracoesView = () => {
   ];
 
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="space-y-8 animate-fadeIn text-slate-950 pb-12">
       {/* Header Bar */}
-      <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl md:text-3xl font-black text-slate-950 flex items-center gap-2.5">
-            <Settings className="w-8 h-8 text-sky-600" /> Configurações, Tema & Licença de Uso
+            <Settings className="w-8 h-8 text-sky-600" /> Configurações & Licença de Uso
           </h2>
           <p className="text-sm text-slate-600 font-extrabold mt-1">
-            Altere as cores do sistema, gerencie os dados da empresa e ative chaves de licença
+            Gerencie os dados da empresa, personalize as cores do painel e ative sua licença de uso
           </p>
         </div>
       </div>
 
-      {/* SYSTEM COLOR PALETTE SELECTOR CARD */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
+      {/* SECTION 1: EMBEDDED SUPABASE DATABASE CONFIGURATOR & SQL GENERATOR (EXCLUSIVITY TO MASTER ADMIN) */}
+      {isResellerAuthorized && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Database className="w-6 h-6 text-emerald-600" />
+            <h3 className="text-xl font-black text-slate-950">Sincronização em Nuvem & Script SQL (Restrito Master)</h3>
+          </div>
+          <SupabaseView />
+        </div>
+      )}
+
+      {/* SECTION 2: COMPANY REGISTRATION PROFILE */}
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 md:p-8 space-y-6">
+        <div className="flex items-center gap-3 border-b border-slate-200 pb-4">
+          <div className="p-3 bg-sky-100 text-sky-700 rounded-2xl">
+            <Building2 className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="text-xl font-black text-slate-950">Dados da Empresa</h3>
+            <p className="text-xs text-slate-500 font-extrabold">Informações exibidas na página pública de agendamento</p>
+          </div>
+        </div>
+
+        <form onSubmit={handleSaveCompany} className="space-y-4 text-xs font-bold">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-slate-700 mb-1">Nome Fantasia da Empresa *</label>
+              <input
+                type="text"
+                required
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                className="w-full p-3 rounded-xl border border-slate-300 font-black text-sm text-slate-950 outline-none focus:ring-2 focus:ring-sky-500 bg-slate-50"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-700 mb-1">CNPJ / CPF</label>
+              <input
+                type="text"
+                value={cnpj}
+                onChange={(e) => setCnpj(e.target.value)}
+                placeholder="00.000.000/0001-00"
+                className="w-full p-3 rounded-xl border border-slate-300 font-black text-sm text-slate-950 outline-none focus:ring-2 focus:ring-sky-500 bg-slate-50"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-slate-700 mb-1">Telefone Fixo</label>
+              <input
+                type="text"
+                value={telefone}
+                onChange={(e) => setTelefone(e.target.value)}
+                placeholder="(11) 3333-4444"
+                className="w-full p-3 rounded-xl border border-slate-300 font-black text-sm text-slate-950 outline-none focus:ring-2 focus:ring-sky-500 bg-slate-50"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-700 mb-1">WhatsApp Oficial da Empresa *</label>
+              <input
+                type="text"
+                required
+                value={whatsapp}
+                onChange={(e) => setWhatsapp(e.target.value)}
+                placeholder="(11) 98589-7774"
+                className="w-full p-3 rounded-xl border border-slate-300 font-black text-sm text-slate-950 outline-none focus:ring-2 focus:ring-sky-500 bg-slate-50"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="md:col-span-2">
+              <label className="block text-slate-700 mb-1">Endereço Completo</label>
+              <input
+                type="text"
+                value={endereco}
+                onChange={(e) => setEndereco(e.target.value)}
+                placeholder="Rua, Número, Bairro"
+                className="w-full p-3 rounded-xl border border-slate-300 font-black text-sm text-slate-950 outline-none focus:ring-2 focus:ring-sky-500 bg-slate-50"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-700 mb-1">Cidade / Estado</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={cidade}
+                  onChange={(e) => setCidade(e.target.value)}
+                  placeholder="Cidade"
+                  className="flex-1 p-3 rounded-xl border border-slate-300 font-black text-sm text-slate-950 outline-none focus:ring-2 focus:ring-sky-500 bg-slate-50"
+                />
+                <input
+                  type="text"
+                  value={estado}
+                  onChange={(e) => setEstado(e.target.value)}
+                  placeholder="UF"
+                  maxLength={2}
+                  className="w-16 p-3 rounded-xl border border-slate-300 font-black text-sm text-slate-950 outline-none uppercase text-center focus:ring-2 focus:ring-sky-500 bg-slate-50"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-slate-700 mb-1">Descrição & Apresentação da Empresa</label>
+            <textarea
+              rows={3}
+              value={descricao}
+              onChange={(e) => setDescricao(e.target.value)}
+              placeholder="Descreva os diferenciais da sua empresa..."
+              className="w-full p-3 rounded-xl border border-slate-300 font-bold text-sm text-slate-950 outline-none focus:ring-2 focus:ring-sky-500 bg-slate-50"
+            />
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <button
+              type="submit"
+              className="py-3 px-6 bg-sky-600 hover:bg-sky-700 text-white font-black text-sm rounded-xl shadow-md transition flex items-center gap-2"
+            >
+              <Save className="w-4 h-4" /> Salvar Dados da Empresa
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* SECTION 3: SYSTEM COLOR PALETTE SELECTOR CARD */}
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 md:p-8 space-y-4">
         <div className="flex items-center gap-3 border-b border-slate-200 pb-4">
           <div className="p-3 bg-gradient-to-tr from-sky-500 via-purple-500 to-rose-500 text-white rounded-2xl shadow-sm">
-            <Palette className="w-7 h-7" />
+            <Palette className="w-6 h-6" />
           </div>
           <div>
             <h3 className="text-xl font-black text-slate-950">Personalização da Cor do Sistema</h3>
@@ -98,102 +230,64 @@ export const ConfiguracoesView = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
-          {themeOptions.map(t => {
-            const isSelected = systemTheme === t.key;
-
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+          {themeOptions.map((theme) => {
+            const isSelected = systemTheme === theme.key;
             return (
-              <button
-                key={t.key}
-                onClick={() => setSystemTheme(t.key)}
-                className={`p-4 rounded-2xl border-2 transition-all text-left flex items-start justify-between ${t.bgPreview} ${
-                  isSelected ? 'ring-4 ring-sky-400 shadow-lg scale-[1.02]' : 'hover:opacity-90'
+              <div
+                key={theme.key}
+                onClick={() => setSystemTheme(theme.key)}
+                className={`p-4 rounded-2xl border-2 transition cursor-pointer space-y-2.5 ${
+                  isSelected 
+                    ? 'border-sky-500 bg-sky-50/80 shadow-md ring-2 ring-sky-400 scale-[1.01]' 
+                    : 'border-slate-200 bg-slate-50 hover:border-slate-300'
                 }`}
               >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className={`w-4 h-4 rounded-full ${t.colorClass} border border-white shadow-xs`} />
-                    <h4 className="font-black text-sm">{t.title}</h4>
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2 font-black text-sm text-slate-950">
+                    <span className={`w-4 h-4 rounded-full ${theme.colorClass} border border-black/10`} />
+                    {theme.title}
                   </div>
-                  <p className="text-xs opacity-80 font-bold">{t.desc}</p>
+                  {isSelected && (
+                    <span className="p-1 bg-sky-600 text-white rounded-full">
+                      <Check className="w-3.5 h-3.5" />
+                    </span>
+                  )}
                 </div>
-
-                {isSelected && (
-                  <div className="p-1 rounded-full bg-slate-950 text-white">
-                    <Check className="w-4 h-4" />
-                  </div>
-                )}
-              </button>
+                <p className="text-xs font-bold text-slate-500">{theme.desc}</p>
+              </div>
             );
           })}
         </div>
       </div>
 
-      {/* High Contrast Software Licensing Box (Light & Clear Style) */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-md p-6 space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-sky-100 text-sky-700 rounded-2xl border border-sky-300">
-              <Key className="w-7 h-7" />
-            </div>
-            <div>
-              <span className="text-xs font-black uppercase text-slate-500 tracking-wider">Status da Licença Atual</span>
-              <h3 className="text-2xl font-black text-slate-950">
-                Plano {activeLicenca.plano} ({activeLicenca.status})
-              </h3>
-            </div>
+      {/* SECTION 4: LICENSE ACTIVATION & HARDWARE ID CARD */}
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 md:p-8 space-y-6">
+        <div className="flex items-center gap-3 border-b border-slate-200 pb-4">
+          <div className="p-3 bg-amber-100 text-amber-700 rounded-2xl">
+            <Key className="w-6 h-6" />
           </div>
-
-          <span className={`px-4 py-2 rounded-2xl text-xs font-black border flex items-center gap-1.5 ${
-            licenseValidation.valido
-              ? 'bg-emerald-100 text-emerald-950 border-emerald-300'
-              : 'bg-rose-100 text-rose-950 border-rose-300'
-          }`}>
-            <ShieldCheck className="w-4 h-4 text-emerald-700" />
-            {licenseValidation.valido ? 'Licença Ativa & Dispositivo Autorizado' : 'Restrição ou Licença Expirada'}
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-1">
-            <span className="text-xs font-black uppercase text-slate-500 block">Chave Ativa Atual</span>
-            <span className="text-base font-mono font-black text-slate-950 block">{activeLicenca.codigoAtivacao || 'N/A'}</span>
-          </div>
-
-          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-1">
-            <span className="text-xs font-black uppercase text-slate-500 block">Data de Expiração</span>
-            <span className="text-base font-mono font-black text-slate-950 block">{activeLicenca.dataExpiracao || '2030-12-31'}</span>
-          </div>
-
-          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-1">
-            <span className="text-xs font-black uppercase text-slate-500 block">ID do Aparelho Vinculado</span>
-            <span className="text-xs font-mono font-bold text-slate-700 block truncate">{hardwareId}</span>
+          <div>
+            <h3 className="text-xl font-black text-slate-950">Chave de Licença de Uso</h3>
+            <p className="text-xs text-slate-500 font-extrabold">Digite o código recebido via WhatsApp para ativar a sua licença</p>
           </div>
         </div>
 
-        {/* Form to Redeem Activation Key */}
-        <form onSubmit={handleRedeemKey} className="p-6 rounded-2xl bg-amber-50 border-2 border-amber-300 space-y-3">
-          <label className="block font-black text-slate-950 text-base flex items-center gap-2">
-            <Key className="w-5 h-5 text-amber-700" /> Resgatar Nova Chave de Ativação
-          </label>
-          <p className="text-xs font-extrabold text-slate-800">
-            Digite a chave enviada no seu WhatsApp para renovar sua licença mensal ou anual:
-          </p>
-
+        <form onSubmit={handleRedeemKey} className="space-y-3">
           <div className="flex flex-col sm:flex-row gap-3">
             <input
               type="text"
               required
-              placeholder="Ex: AGY-1ANO-X9K2-M4P1"
+              placeholder="Ex: AGY-1ANO-XXXX-XXXX"
               value={codigoChaveInput}
-              onChange={(e) => setCodigoChaveInput(e.target.value)}
-              className="flex-1 px-4 py-3 rounded-xl bg-white text-slate-950 font-mono font-black text-base border-2 border-amber-400 outline-none focus:ring-2 focus:ring-amber-500"
+              onChange={(e) => setCodigoChaveInput(e.target.value.toUpperCase())}
+              className="flex-1 p-3.5 rounded-xl border-2 border-slate-300 text-slate-950 font-mono font-black text-base outline-none focus:ring-2 focus:ring-sky-500 bg-slate-50 uppercase"
             />
             <button
               type="submit"
-              className="px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-sm shadow-md transition whitespace-nowrap"
+              className="py-3.5 px-6 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm rounded-xl transition flex items-center justify-center gap-2 shadow-md uppercase"
             >
-              Ativar Chave
+              <CheckCircle2 className="w-5 h-5" /> Ativar Chave
             </button>
           </div>
 
@@ -204,100 +298,6 @@ export const ConfiguracoesView = () => {
               {msgResultado.mensagem}
             </div>
           )}
-        </form>
-      </div>
-
-      {/* Main Company Profile Form */}
-      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4">
-        <h3 className="text-xl font-black text-slate-950 border-b border-slate-100 pb-3 flex items-center gap-2">
-          <Building2 className="w-6 h-6 text-sky-600" /> Cadastro Geral da Empresa
-        </h3>
-
-        <form onSubmit={handleSaveCompany} className="space-y-4 text-sm font-semibold text-slate-950">
-          <div>
-            <label className="block font-extrabold text-slate-950 mb-1">Nome Comercial da Empresa *</label>
-            <input
-              type="text"
-              required
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-slate-300 font-bold text-base outline-none focus:ring-2 focus:ring-sky-500"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block font-extrabold text-slate-950 mb-1">CNPJ / CPF</label>
-              <input
-                type="text"
-                value={cnpj}
-                onChange={(e) => setCnpj(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-300 font-bold text-sm outline-none focus:ring-2 focus:ring-sky-500"
-              />
-            </div>
-
-            <div>
-              <label className="block font-extrabold text-slate-950 mb-1">Telefone Fixo</label>
-              <input
-                type="text"
-                value={telefone}
-                onChange={(e) => setTelefone(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-300 font-bold text-sm outline-none focus:ring-2 focus:ring-sky-500"
-              />
-            </div>
-
-            <div>
-              <label className="block font-extrabold text-slate-950 mb-1">WhatsApp de Atendimento</label>
-              <input
-                type="text"
-                value={whatsapp}
-                onChange={(e) => setWhatsapp(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-300 font-bold text-sm outline-none focus:ring-2 focus:ring-sky-500"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="md:col-span-2">
-              <label className="block font-extrabold text-slate-950 mb-1">Endereço Completo</label>
-              <input
-                type="text"
-                value={endereco}
-                onChange={(e) => setEndereco(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-300 font-bold text-sm outline-none focus:ring-2 focus:ring-sky-500"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block font-extrabold text-slate-950 mb-1">Cidade</label>
-                <input
-                  type="text"
-                  value={cidade}
-                  onChange={(e) => setCidade(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-slate-300 font-bold text-xs outline-none focus:ring-2 focus:ring-sky-500"
-                />
-              </div>
-              <div>
-                <label className="block font-extrabold text-slate-950 mb-1">Estado</label>
-                <input
-                  type="text"
-                  value={estado}
-                  onChange={(e) => setEstado(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-slate-300 font-bold text-xs outline-none focus:ring-2 focus:ring-sky-500"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-3 border-t border-slate-100 flex justify-end">
-            <button
-              type="submit"
-              className="px-6 py-3 rounded-xl text-white font-extrabold text-sm bg-gradient-to-r from-sky-600 to-emerald-500 hover:from-sky-700 hover:to-emerald-600 shadow-md flex items-center gap-2"
-            >
-              <Save className="w-5 h-5" /> Salvar Dados da Empresa
-            </button>
-          </div>
         </form>
       </div>
     </div>
