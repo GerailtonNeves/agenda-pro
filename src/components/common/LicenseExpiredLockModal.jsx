@@ -47,8 +47,8 @@ export const LicenseExpiredLockModal = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-md animate-fadeIn text-slate-950">
-      <div className="bg-white rounded-3xl shadow-2xl max-w-xl w-full overflow-hidden border-2 border-rose-500 animate-scaleUp">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-md animate-fadeIn text-slate-950 overflow-y-auto">
+      <div className="bg-white rounded-3xl shadow-2xl max-w-xl w-full overflow-hidden border-2 border-rose-500 animate-scaleUp my-auto">
         {/* Header Alert */}
         <div className="px-6 py-5 bg-gradient-to-r from-rose-600 to-rose-700 text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -64,23 +64,23 @@ export const LicenseExpiredLockModal = () => {
           </div>
         </div>
 
-        <div className="p-6 md:p-8 space-y-6">
+        <div className="p-5 md:p-8 space-y-5">
           {/* Main Notice Banner */}
-          <div className="p-5 rounded-2xl bg-rose-50 border border-rose-200 space-y-2">
-            <p className="text-base font-black text-rose-950 leading-relaxed flex items-start gap-2">
-              <AlertTriangle className="w-6 h-6 text-rose-600 flex-shrink-0 mt-0.5" />
+          <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 space-y-2">
+            <p className="text-sm font-black text-rose-950 leading-relaxed flex items-start gap-2">
+              <AlertTriangle className="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5" />
               <span>{licenseValidation.motivo || 'Para continuar utilizando o sistema no seu computador ou celular, você precisa adquirir ou renovar sua licença.'}</span>
             </p>
-            <p className="text-xs text-rose-800 font-bold pl-8">
-              Hardware ID deste aparelho: <b className="font-mono text-slate-950 bg-white px-2 py-0.5 rounded border border-rose-300">{hardwareId}</b>
+            <p className="text-xs text-rose-800 font-bold pl-7">
+              Hardware ID deste aparelho: <b className="font-mono text-slate-950 bg-white px-2 py-0.5 rounded border border-rose-300 inline-block mt-0.5">{hardwareId}</b>
             </p>
           </div>
 
           {/* Contact Support & Sales WhatsApp Box */}
-          <div className="p-6 rounded-2xl bg-slate-900 text-white space-y-4 shadow-xl">
+          <div className="p-5 rounded-2xl bg-slate-900 text-white space-y-3.5 shadow-xl">
             <div className="space-y-1">
-              <span className="text-xs font-black uppercase text-sky-400 tracking-wider">Contato Oficial de Ativação & Vendas</span>
-              <h4 className="text-2xl font-black text-white flex items-center gap-2">
+              <span className="text-[11px] font-black uppercase text-sky-400 tracking-wider block">Contato Oficial de Ativação & Vendas</span>
+              <h4 className="text-xl md:text-2xl font-black text-white flex items-center gap-2">
                 <Phone className="w-6 h-6 text-emerald-400" /> (11) 9 8589-7774
               </h4>
               <p className="text-xs text-slate-300 font-semibold">
@@ -90,42 +90,42 @@ export const LicenseExpiredLockModal = () => {
 
             <button
               onClick={handleContactSales}
-              className="w-full py-4 px-6 bg-emerald-500 hover:bg-emerald-600 text-white font-black text-sm rounded-2xl shadow-lg transition flex items-center justify-center gap-2 uppercase tracking-wider"
+              className="w-full py-3.5 px-4 bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs md:text-sm rounded-2xl shadow-lg transition flex items-center justify-center gap-2 uppercase tracking-wider"
             >
               <MessageSquare className="w-5 h-5 text-white" /> Adquirir Nova Licença via WhatsApp
             </button>
           </div>
 
-          {/* Redeem Key Form */}
-          <form onSubmit={handleRedeem} className="p-5 rounded-2xl bg-amber-50 border-2 border-amber-300 space-y-3">
-            <label className="block text-xs font-black uppercase text-amber-950 flex items-center gap-1.5">
-              <Key className="w-4 h-4 text-amber-700" /> Digite sua Chave de Ativação ou Chave Master de Emergência:
+          {/* Redeem Key Form - Fully Responsive Mobile Container */}
+          <form onSubmit={handleRedeem} className="p-4 rounded-2xl bg-amber-50 border-2 border-amber-300 space-y-3">
+            <label className="block text-xs font-black uppercase text-amber-950 flex items-center gap-1.5 leading-snug">
+              <Key className="w-4 h-4 text-amber-700 flex-shrink-0" /> Digite sua Chave de Ativação ou Chave Master:
             </label>
 
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2.5 w-full items-stretch">
               <input
                 type="text"
                 required
-                placeholder="Digite seu código de licença"
+                placeholder="Ex: AGY-1M-48TM-TI37"
                 value={inputKey}
                 onChange={(e) => setInputKey(e.target.value)}
-                className="flex-1 px-4 py-3 rounded-xl bg-white border-2 border-amber-400 text-slate-950 font-mono font-black text-base outline-none focus:ring-2 focus:ring-amber-500 shadow-sm"
+                className="w-full min-w-0 px-3.5 py-3 rounded-xl bg-white border-2 border-amber-400 text-slate-950 font-mono font-black text-sm md:text-base outline-none focus:ring-2 focus:ring-amber-500 shadow-xs"
               />
               <button
                 type="submit"
-                className="px-6 py-3 bg-amber-400 hover:bg-amber-500 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl transition shadow-md whitespace-nowrap"
+                className="w-full sm:w-auto px-6 py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl transition shadow-md shrink-0 flex items-center justify-center"
               >
                 Ativar
               </button>
             </div>
 
             {redeemResult && (
-              <div className={`p-3.5 rounded-xl border text-xs font-black flex items-center gap-2 ${
+              <div className={`p-3 rounded-xl border text-xs font-black flex items-center gap-2 ${
                 redeemResult.sucesso 
                   ? 'bg-emerald-100 text-emerald-950 border-emerald-300' 
                   : 'bg-rose-100 text-rose-950 border-rose-300'
               }`}>
-                {redeemResult.sucesso ? <CheckCircle2 className="w-5 h-5 text-emerald-700" /> : <AlertTriangle className="w-5 h-5 text-rose-700" />}
+                {redeemResult.sucesso ? <CheckCircle2 className="w-5 h-5 text-emerald-700 flex-shrink-0" /> : <AlertTriangle className="w-5 h-5 text-rose-700 flex-shrink-0" />}
                 <span>{redeemResult.mensagem}</span>
               </div>
             )}
@@ -135,7 +135,7 @@ export const LicenseExpiredLockModal = () => {
           <div className="pt-2 border-t border-slate-200 text-center">
             <button
               onClick={handleEmergencyRestore}
-              className="w-full py-3.5 bg-gradient-to-r from-sky-600 to-cyan-600 hover:from-sky-700 hover:to-cyan-700 text-white font-black text-sm rounded-2xl shadow-md transition flex items-center justify-center gap-2"
+              className="w-full py-3 bg-gradient-to-r from-sky-600 to-cyan-600 hover:from-sky-700 hover:to-cyan-700 text-white font-black text-xs md:text-sm rounded-2xl shadow-md transition flex items-center justify-center gap-2"
             >
               <ShieldCheck className="w-5 h-5 text-sky-200" /> 🔓 Restaurar Minha Licença Master (Dono do Sistema)
             </button>

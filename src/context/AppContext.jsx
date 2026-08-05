@@ -160,7 +160,7 @@ export const AppProvider = ({ children }) => {
     ? empresas.find(e => e.id === activeEmpresaId) || empresas[0] 
     : initialEmpresas[0]) || initialEmpresas[0];
 
-  // Reseller Authorization (ONLY TRUE IF USER IS SUPERADMIN OR COMPANY IS AUTHORIZED RESELLER)
+  // Reseller Authorization
   const isResellerAuthorized = userRole === 'superadmin' || !!activeEmpresa.isReseller;
 
   // License Evaluation
@@ -384,7 +384,44 @@ export const AppProvider = ({ children }) => {
       };
     }
 
-    const match = licencas.find(l => l.codigoAtivacao === cleanCode);
+    let match = licencas.find(l => l.codigoAtivacao === cleanCode);
+
+    // DYNAMIC PATTERN RECOGNITION FOR AGY- LICENSES SENT VIA WHATSAPP (MULTI-DEVICE UNLOCK)
+    if (!match && (cleanCode.startsWith('AGY-') || cleanCode.startsWith('AGENDAPRO-'))) {
+      let dur = '1_MES';
+      let planoName = 'MENSAL';
+
+      if (cleanCode.includes('-5M') || cleanCode.includes('T5M')) {
+        dur = 'TESTE_5M';
+      } else if (cleanCode.includes('-24H')) {
+        dur = 'TESTE_24H';
+      } else if (cleanCode.includes('-1M')) {
+        dur = '1_MES';
+      } else if (cleanCode.includes('-6M')) {
+        dur = '6_MESES';
+        planoName = 'ANUAL';
+      } else if (cleanCode.includes('-1ANO') || cleanCode.includes('-365')) {
+        dur = '1_ANO';
+        planoName = 'ANUAL';
+      }
+
+      const expiracaoIso = getExpirationDateByDuration(dur);
+      const dateStr = expiracaoIso.split('T')[0];
+
+      match = {
+        id: `lic-wa-${Date.now()}`,
+        codigoAtivacao: cleanCode,
+        empresaId: activeEmpresa.id,
+        empresaNome: activeEmpresa.nome,
+        duracao: dur,
+        plano: planoName,
+        status: 'ATIVO',
+        dataExpiracaoIso: expiracaoIso,
+        dataExpiracao: dateStr,
+        dispositivoVinculadoId: hardwareId,
+        criadoEm: new Date().toISOString()
+      };
+    }
 
     if (!match) {
       return { 
@@ -408,23 +445,20 @@ export const AppProvider = ({ children }) => {
       };
     }
 
-    setLicencas(prev => prev.map(l => {
-      if (l.id === match.id) {
-        return { 
-          ...l, 
-          empresaId: activeEmpresa.id, 
-          empresaNome: activeEmpresa.nome,
-          dispositivoVinculadoId: hardwareId,
-          status: 'ATIVO'
-        };
-      }
-      return l;
-    }));
+    const updatedLic = {
+      ...match,
+      empresaId: activeEmpresa.id,
+      empresaNome: activeEmpresa.nome,
+      dispositivoVinculadoId: hardwareId,
+      status: 'ATIVO'
+    };
+
+    setLicencas(prev => [updatedLic, ...prev.filter(l => l.codigoAtivacao !== cleanCode)]);
 
     playNotificationSound();
     return { 
       sucesso: true, 
-      mensagem: `🎉 Licença ativada com sucesso! (${getLabelDuracao(match.duracao)} válida até ${new Date(match.dataExpiracaoIso || match.dataExpiracao).toLocaleString('pt-BR')}).` 
+      mensagem: `🎉 Licença ativada com sucesso! (${getLabelDuracao(updatedLic.duracao)} válida até ${new Date(updatedLic.dataExpiracaoIso || updatedLic.dataExpiracao).toLocaleString('pt-BR')}).` 
     };
   };
 
