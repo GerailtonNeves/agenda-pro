@@ -210,7 +210,7 @@ CREATE TRIGGER trigger_concluir_agendamento
 BEFORE UPDATE ON public.agendamentos
 FOR EACH ROW EXECUTE FUNCTION public.calcular_comissao_servico();
 
--- 11. HABILITAR ROW LEVEL SECURITY (RLS) EM TODAS AS TABELAS
+-- 11. HABILITAR ROW LEVEL SECURITY (RLS) COM ACESSO COMPLETO ANON/PUBLIC
 ALTER TABLE public.empresas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.funcionarios ENABLE ROW LEVEL SECURITY;
@@ -220,47 +220,25 @@ ALTER TABLE public.clientes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.agendamentos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.financeiro ENABLE ROW LEVEL SECURITY;
 
--- 12. POLÍTICAS RLS PARA LEITURA PÚBLICA (Links de Agendamento)
-CREATE POLICY "Permitir leitura pública de empresas ativas"
-ON public.empresas FOR SELECT USING (status = 'ativo');
+-- POLÍTICAS RLS PERMISSIVAS PARA API ANON / PUBLICA
+DROP POLICY IF EXISTS "Permitir Acesso Total Servicos" ON public.servicos;
+CREATE POLICY "Permitir Acesso Total Servicos" ON public.servicos FOR ALL USING (true) WITH CHECK (true);
 
-CREATE POLICY "Permitir leitura pública de funcionários ativos"
-ON public.funcionarios FOR SELECT USING (status = 'ativo');
+DROP POLICY IF EXISTS "Permitir Acesso Total Funcionarios" ON public.funcionarios;
+CREATE POLICY "Permitir Acesso Total Funcionarios" ON public.funcionarios FOR ALL USING (true) WITH CHECK (true);
 
-CREATE POLICY "Permitir leitura pública de serviços ativos"
-ON public.servicos FOR SELECT USING (ativo = true);
+DROP POLICY IF EXISTS "Permitir Acesso Total Empresas" ON public.empresas;
+CREATE POLICY "Permitir Acesso Total Empresas" ON public.empresas FOR ALL USING (true) WITH CHECK (true);
 
-CREATE POLICY "Permitir clientes criarem agendamentos públicos"
-ON public.agendamentos FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Permitir Acesso Total Clientes" ON public.clientes;
+CREATE POLICY "Permitir Acesso Total Clientes" ON public.clientes FOR ALL USING (true) WITH CHECK (true);
 
--- 13. POLÍTICAS RLS DE ISOLAMENTO POR TENANT (Empresa Autenticada)
-CREATE POLICY "Isolamento por Tenant - Funcionarios"
-ON public.funcionarios FOR ALL USING (
-    empresa_id IN (SELECT empresa_id FROM public.profiles WHERE id = auth.uid())
-);
+DROP POLICY IF EXISTS "Permitir Acesso Total Agendamentos" ON public.agendamentos;
+CREATE POLICY "Permitir Acesso Total Agendamentos" ON public.agendamentos FOR ALL USING (true) WITH CHECK (true);
 
-CREATE POLICY "Isolamento por Tenant - Servicos"
-ON public.servicos FOR ALL USING (
-    empresa_id IN (SELECT empresa_id FROM public.profiles WHERE id = auth.uid())
-);
+DROP POLICY IF EXISTS "Permitir Acesso Total Produtos" ON public.produtos;
+CREATE POLICY "Permitir Acesso Total Produtos" ON public.produtos FOR ALL USING (true) WITH CHECK (true);
 
-CREATE POLICY "Isolamento por Tenant - Produtos"
-ON public.produtos FOR ALL USING (
-    empresa_id IN (SELECT empresa_id FROM public.profiles WHERE id = auth.uid())
-);
-
-CREATE POLICY "Isolamento por Tenant - Clientes"
-ON public.clientes FOR ALL USING (
-    empresa_id IN (SELECT empresa_id FROM public.profiles WHERE id = auth.uid())
-);
-
-CREATE POLICY "Isolamento por Tenant - Agendamentos"
-ON public.agendamentos FOR ALL USING (
-    empresa_id IN (SELECT empresa_id FROM public.profiles WHERE id = auth.uid())
-);
-
-CREATE POLICY "Isolamento por Tenant - Financeiro"
-ON public.financeiro FOR ALL USING (
-    empresa_id IN (SELECT empresa_id FROM public.profiles WHERE id = auth.uid())
-);
+DROP POLICY IF EXISTS "Permitir Acesso Total Financeiro" ON public.financeiro;
+CREATE POLICY "Permitir Acesso Total Financeiro" ON public.financeiro FOR ALL USING (true) WITH CHECK (true);
 `;

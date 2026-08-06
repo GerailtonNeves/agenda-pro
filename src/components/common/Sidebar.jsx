@@ -21,11 +21,23 @@ import {
   CheckCircle2,
   Building2,
   Palette,
-  Database
+  Database,
+  LogOut
 } from 'lucide-react';
 
 export const Sidebar = ({ onItemClick }) => {
-  const { currentView, setCurrentView, activeEmpresa, openPublicBookingPage, userRole, isResellerAuthorized, systemTheme } = useApp();
+  const { 
+    currentView, 
+    setCurrentView, 
+    activeEmpresa, 
+    openPublicBookingPage, 
+    userRole, 
+    isResellerAuthorized, 
+    systemTheme,
+    currentUser,
+    logoutUser 
+  } = useApp();
+  
   const [copiedLink, setCopiedLink] = useState(false);
 
   const navItems = [
@@ -108,7 +120,7 @@ export const Sidebar = ({ onItemClick }) => {
   return (
     <aside className={`w-72 h-full ${currentStyle.sidebarBg} flex flex-col justify-between p-4 flex-shrink-0 shadow-sm transition-all duration-300 font-sans`}>
       {/* Top Header Logo */}
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div className="flex items-center gap-3 px-2">
           <div className={`w-10 h-10 rounded-2xl bg-gradient-to-tr ${currentStyle.brandGradient} text-white flex items-center justify-center font-black shadow-lg shadow-sky-500/20`}>
             <Sparkles className="w-5 h-5 text-white" />
@@ -125,7 +137,7 @@ export const Sidebar = ({ onItemClick }) => {
         </div>
 
         {/* Navigation Item List */}
-        <nav className="space-y-1 overflow-y-auto max-h-[calc(100vh-280px)] pr-1 scrollbar-thin">
+        <nav className="space-y-1 overflow-y-auto max-h-[calc(100vh-320px)] pr-1 scrollbar-thin">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentView === item.id;
@@ -134,7 +146,7 @@ export const Sidebar = ({ onItemClick }) => {
               <button
                 key={item.id}
                 onClick={() => handleSelectView(item.id)}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all duration-200 ${
+                className={`w-full flex items-center justify-between px-3.5 py-2 rounded-2xl text-xs font-bold transition-all duration-200 ${
                   isActive 
                     ? currentStyle.activeItem
                     : 'text-slate-700 hover:text-slate-950 hover:bg-slate-100/80 font-semibold'
@@ -164,9 +176,9 @@ export const Sidebar = ({ onItemClick }) => {
         </nav>
       </div>
 
-      {/* Bottom Footer Section: Copy Link Button */}
-      <div className="pt-4 border-t border-slate-200 space-y-3">
-        <div className="bg-white/90 backdrop-blur-md p-3.5 rounded-2xl border border-slate-200 text-slate-950 space-y-2 shadow-xs">
+      {/* Bottom Footer Section: Copy Link & Dedicated Logout Button */}
+      <div className="pt-3 border-t border-slate-200 space-y-2.5">
+        <div className="bg-white/90 backdrop-blur-md p-3 rounded-2xl border border-slate-200 text-slate-950 space-y-2 shadow-xs">
           <div className="flex items-center justify-between text-[11px] font-extrabold text-slate-600">
             <span className="flex items-center gap-1.5"><Building2 className="w-3.5 h-3.5 text-sky-600" /> Link de Agendamento</span>
             <span className="text-[10px] text-emerald-700 font-bold bg-emerald-100 px-1.5 py-0.5 rounded">Ativo</span>
@@ -178,7 +190,7 @@ export const Sidebar = ({ onItemClick }) => {
 
           <button
             onClick={handleCopyLink}
-            className={`w-full py-2.5 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 shadow-xs ${
+            className={`w-full py-2 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 shadow-xs ${
               copiedLink
                 ? 'bg-emerald-600 text-white'
                 : `${currentStyle.buttonPrimary}`
@@ -195,6 +207,17 @@ export const Sidebar = ({ onItemClick }) => {
             )}
           </button>
         </div>
+
+        {/* DEDICATED LOGOUT BUTTON IN SIDEBAR */}
+        {currentUser && (
+          <button
+            onClick={logoutUser}
+            className="w-full py-3 px-4 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-black text-xs border border-rose-300 transition flex items-center justify-center gap-2 shadow-xs uppercase tracking-wider"
+          >
+            <LogOut className="w-4 h-4 text-rose-600" />
+            <span>Sair do Sistema (Logoff)</span>
+          </button>
+        )}
       </div>
     </aside>
   );
