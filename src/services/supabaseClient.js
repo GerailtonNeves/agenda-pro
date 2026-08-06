@@ -1,17 +1,29 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Retrieve saved config or fallback to environment / demo
-const storedUrl = localStorage.getItem('saas_supabase_url') || 'https://sua-empresa.supabase.co';
-const storedKey = localStorage.getItem('saas_supabase_anon_key') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...';
+// Global Production Supabase Credentials
+const HARDCODED_SUPABASE_URL = 'https://pnkrtcroxwdfksvkwxwk.supabase.co';
+const HARDCODED_SUPABASE_KEY = 'sb_publishable_ncJ-5Fad3rgMlG-kn5cR2A_at0ehJNY';
+
+export const getSupabaseUrl = () => {
+  return localStorage.getItem('saas_supabase_url') || HARDCODED_SUPABASE_URL;
+};
+
+export const getSupabaseKey = () => {
+  return localStorage.getItem('saas_supabase_anon_key') || HARDCODED_SUPABASE_KEY;
+};
 
 export const isSupabaseConfigured = () => {
-  return localStorage.getItem('saas_supabase_configured') === 'true';
+  const url = getSupabaseUrl();
+  const key = getSupabaseKey();
+  return !!(url && key && url.includes('.supabase.co') && key.length > 10);
 };
 
 export const saveSupabaseConfig = (url, key) => {
   if (url && key) {
-    localStorage.setItem('saas_supabase_url', url);
-    localStorage.setItem('saas_supabase_anon_key', key);
+    const cleanUrl = url.trim();
+    const cleanKey = key.trim();
+    localStorage.setItem('saas_supabase_url', cleanUrl);
+    localStorage.setItem('saas_supabase_anon_key', cleanKey);
     localStorage.setItem('saas_supabase_configured', 'true');
     return true;
   }
@@ -26,7 +38,12 @@ export const clearSupabaseConfig = () => {
 
 export const getSupabaseClient = () => {
   try {
-    return createClient(storedUrl, storedKey);
+    const url = getSupabaseUrl();
+    const key = getSupabaseKey();
+    if (!url || !key || !url.includes('.supabase.co')) {
+      return null;
+    }
+    return createClient(url, key);
   } catch (e) {
     console.warn('Supabase client error:', e);
     return null;
