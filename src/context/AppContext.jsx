@@ -22,6 +22,19 @@ import {
 } from '../services/licenseService';
 import { getSupabaseClient, isSupabaseConfigured } from '../services/supabaseClient';
 
+const slugify = (str) => {
+  if (!str) return '';
+  return str
+    .toString()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9 -]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+};
+
 const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
@@ -327,7 +340,7 @@ export const AppProvider = ({ children }) => {
     }
   }, []);
 
-  // AUTOMATIC PUBLIC ROUTE DETECTOR ON PAGE MOUNT
+  // AUTOMATIC PUBLIC ROUTE DETECTOR ON PAGE MOUNT (BULLETPROOF PARSER)
   useEffect(() => {
     try {
       const path = window.location.pathname;
@@ -340,41 +353,60 @@ export const AppProvider = ({ children }) => {
           setPublicBookingSlug(empSlug);
           setCurrentView('instalacaoApp');
         }
-      } else if (path && path.includes('/agendar/')) {
+      } else if (path && path.includes('/agendar')) {
         const parts = path.split('/').filter(Boolean);
         const agendarIdx = parts.indexOf('agendar');
         
         if (agendarIdx !== -1 && parts[agendarIdx + 1]) {
-          const firstParam = parts[agendarIdx + 1];
+          const rawParam = decodeURIComponent(parts[agendarIdx + 1]);
+          const slugParam = slugify(rawParam);
+
           let funcSlug = null;
           let empSlug = null;
 
           if (parts[agendarIdx + 2] === 'profissional' && parts[agendarIdx + 3]) {
-            empSlug = firstParam;
-            funcSlug = parts[agendarIdx + 3];
+            empSlug = slugParam;
+            funcSlug = slugify(decodeURIComponent(parts[agendarIdx + 3]));
           } else {
-            funcSlug = firstParam;
+            // Check if firstParam matches an empresa slug or name
+            const matchEmp = (empresas || []).find(e => 
+              slugify(e.slug) === slugParam || 
+              slugify(e.nome) === slugParam || 
+              e.id === rawParam
+            );
+
+            if (matchEmp) {
+              empSlug = matchEmp.slug;
+              funcSlug = null;
+            } else {
+              // Otherwise check if it matches an employee
+              const matchFunc = (funcionarios || []).find(f => 
+                slugify(f.linkPublicoSlug) === slugParam || 
+                slugify(f.nome) === slugParam || 
+                f.id === rawParam
+              );
+
+              if (matchFunc) {
+                empSlug = (empresas || []).find(e => e.id === matchFunc.empresaId)?.slug || null;
+                funcSlug = matchFunc.linkPublicoSlug || slugParam;
+              } else {
+                empSlug = slugParam;
+                funcSlug = null;
+              }
+            }
           }
 
-          const matchFunc = (funcionarios || []).find(f => 
-            f.linkPublicoSlug === funcSlug || 
-            (f.nome && f.nome.toLowerCase().replace(/[^a-z0-9]/g, '-') === funcSlug)
-          );
-
-          if (matchFunc) {
-            setActiveEmpresaId(matchFunc.empresaId);
-            setPublicEmployeeSlug(funcSlug);
-          } else {
-            if (empSlug) setPublicBookingSlug(empSlug);
-            setPublicEmployeeSlug(funcSlug);
-          }
+          setPublicBookingSlug(empSlug);
+          setPublicEmployeeSlug(funcSlug);
+          setCurrentView('agendamentoPublico');
+        } else {
           setCurrentView('agendamentoPublico');
         }
       }
     } catch (e) {
       console.warn('URL route detection exception:', e);
     }
-  }, []);
+  }, [empresas, funcionarios]);
 
   // Warmup Web Audio Context
   useEffect(() => {

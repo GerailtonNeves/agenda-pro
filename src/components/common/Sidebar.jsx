@@ -22,7 +22,8 @@ import {
   Building2,
   Palette,
   Database,
-  LogOut
+  LogOut,
+  Eye
 } from 'lucide-react';
 
 export const Sidebar = ({ onItemClick }) => {
@@ -62,12 +63,17 @@ export const Sidebar = ({ onItemClick }) => {
     navItems.push({ id: 'superadmin', label: 'Painel Master & Licenciamento', icon: Crown, super: true, color: 'text-amber-500' });
   }
 
-  const publicUrl = `${window.location.origin}/agendar/${activeEmpresa.slug}`;
+  const publicUrl = `${window.location.origin}/agendar/${activeEmpresa.slug || 'minha-empresa'}`;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(publicUrl);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 3000);
+  };
+
+  const handleOpenPreview = () => {
+    openPublicBookingPage(activeEmpresa.slug || 'minha-empresa');
+    if (onItemClick) onItemClick();
   };
 
   const handleSelectView = (viewId) => {
@@ -137,7 +143,7 @@ export const Sidebar = ({ onItemClick }) => {
         </div>
 
         {/* Navigation Item List */}
-        <nav className="space-y-1 overflow-y-auto max-h-[calc(100vh-320px)] pr-1 scrollbar-thin">
+        <nav className="space-y-1 overflow-y-auto max-h-[calc(100vh-340px)] pr-1 scrollbar-thin">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentView === item.id;
@@ -176,8 +182,8 @@ export const Sidebar = ({ onItemClick }) => {
         </nav>
       </div>
 
-      {/* Bottom Footer Section: Copy Link & Dedicated Logout Button */}
-      <div className="pt-3 border-t border-slate-200 space-y-2.5">
+      {/* Bottom Footer Section: Copy Link & Open Booking Page Preview */}
+      <div className="pt-3 border-t border-slate-200 space-y-2">
         <div className="bg-white/90 backdrop-blur-md p-3 rounded-2xl border border-slate-200 text-slate-950 space-y-2 shadow-xs">
           <div className="flex items-center justify-between text-[11px] font-extrabold text-slate-600">
             <span className="flex items-center gap-1.5"><Building2 className="w-3.5 h-3.5 text-sky-600" /> Link de Agendamento</span>
@@ -185,37 +191,46 @@ export const Sidebar = ({ onItemClick }) => {
           </div>
 
           <p className="text-xs font-black text-slate-950 truncate">
-            /agendar/{activeEmpresa.slug}
+            /agendar/{activeEmpresa.slug || 'minha-empresa'}
           </p>
 
-          <button
-            onClick={handleCopyLink}
-            className={`w-full py-2 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 shadow-xs ${
-              copiedLink
-                ? 'bg-emerald-600 text-white'
-                : `${currentStyle.buttonPrimary}`
-            }`}
-          >
-            {copiedLink ? (
-              <>
-                <CheckCircle2 className="w-4 h-4 text-white" /> Link Copiado!
-              </>
-            ) : (
-              <>
-                <Copy className="w-4 h-4" /> Copiar Link da Empresa
-              </>
-            )}
-          </button>
+          <div className="grid grid-cols-2 gap-1.5 pt-1">
+            <button
+              onClick={handleOpenPreview}
+              className="w-full py-2 px-2 rounded-xl bg-sky-100 hover:bg-sky-200 text-sky-800 text-[11px] font-black transition flex items-center justify-center gap-1"
+            >
+              <Eye className="w-3.5 h-3.5 text-sky-600" /> Ver Agenda
+            </button>
+
+            <button
+              onClick={handleCopyLink}
+              className={`w-full py-2 px-2 rounded-xl text-[11px] font-black transition flex items-center justify-center gap-1 shadow-xs ${
+                copiedLink
+                  ? 'bg-emerald-600 text-white'
+                  : `${currentStyle.buttonPrimary}`
+              }`}
+            >
+              {copiedLink ? (
+                <>
+                  <CheckCircle2 className="w-3.5 h-3.5 text-white" /> Copiado!
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5" /> Copiar Link
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* DEDICATED LOGOUT BUTTON IN SIDEBAR */}
         {currentUser && (
           <button
             onClick={logoutUser}
-            className="w-full py-3 px-4 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-black text-xs border border-rose-300 transition flex items-center justify-center gap-2 shadow-xs uppercase tracking-wider"
+            className="w-full py-2.5 px-4 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-black text-xs border border-rose-300 transition flex items-center justify-center gap-2 shadow-xs uppercase tracking-wider"
           >
             <LogOut className="w-4 h-4 text-rose-600" />
-            <span>Sair do Sistema (Logoff)</span>
+            <span>Sair do Sistema</span>
           </button>
         )}
       </div>
