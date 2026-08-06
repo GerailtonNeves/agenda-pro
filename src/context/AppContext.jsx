@@ -180,7 +180,7 @@ export const AppProvider = ({ children }) => {
 
       await client.from('empresas').upsert({
         id: empUuid,
-        slug: currentEmpObj.slug || 'minha-empresa',
+        slug: currentEmpObj.slug || slugify(currentEmpObj.nome) || 'minha-empresa',
         nome: currentEmpObj.nome || 'Minha Empresa',
         whatsapp: currentEmpObj.whatsapp || '',
         telefone: currentEmpObj.telefone || '',
@@ -232,7 +232,7 @@ export const AppProvider = ({ children }) => {
           whatsapp: f.whatsapp || '',
           email: f.email || '',
           comissaoPct: Number(f.comissao_pct || 50),
-          linkPublicoSlug: f.link_publico_slug || (f.nome ? f.nome.toLowerCase().replace(/[^a-z0-9]/g, '-') : 'func'),
+          linkPublicoSlug: f.link_publico_slug || slugify(f.nome) || 'func',
           status: f.status || 'ativo'
         }));
         setFuncionarios(mappedFuncs);
@@ -249,7 +249,7 @@ export const AppProvider = ({ children }) => {
             whatsapp: f.whatsapp || '',
             email: f.email || '',
             comissao_pct: Number(f.comissaoPct || 50),
-            link_publico_slug: f.linkPublicoSlug || (f.nome ? f.nome.toLowerCase().replace(/[^a-z0-9]/g, '-') : 'func'),
+            link_publico_slug: f.linkPublicoSlug || slugify(f.nome) || 'func',
             status: f.status || 'ativo'
           }).catch(e => console.warn('Supabase self-heal func err:', e));
         });
@@ -303,7 +303,7 @@ export const AppProvider = ({ children }) => {
         const mappedEmpresas = dbEmpresas.map(e => ({
           id: e.id,
           nome: e.nome,
-          slug: e.slug,
+          slug: e.slug || slugify(e.nome) || 'minha-empresa',
           nomeProprietario: e.nome_proprietario || 'Proprietário',
           whatsapp: e.whatsapp || '',
           telefone: e.telefone || '',
@@ -492,6 +492,8 @@ export const AppProvider = ({ children }) => {
 
     const newEmpId = generateUUID();
     const nomeEmp = regData.empresaNome || 'Minha Empresa';
+    const cleanSlug = slugify(nomeEmp);
+
     const newEmpObj = {
       id: newEmpId,
       nome: nomeEmp,
@@ -499,7 +501,7 @@ export const AppProvider = ({ children }) => {
       whatsapp: regData.whatsapp || '',
       telefone: regData.whatsapp || '',
       email: cleanEmail,
-      slug: nomeEmp.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+      slug: cleanSlug,
       status: 'ativo',
       isReseller: false
     };
@@ -926,12 +928,13 @@ export const AppProvider = ({ children }) => {
 
   const saveEmpresa = async (empresaData) => {
     if (!empresaData) return;
+    const cleanSlug = empresaData.nome ? slugify(empresaData.nome) : 'minha-empresa';
     let updatedEmp = null;
 
     if (empresaData.id) {
       setEmpresas(prev => prev.map(e => {
         if (e.id === empresaData.id) {
-          updatedEmp = { ...e, ...empresaData, id: ensureValidUUID(e.id) };
+          updatedEmp = { ...e, ...empresaData, id: ensureValidUUID(e.id), slug: cleanSlug };
           return updatedEmp;
         }
         return e;
@@ -942,10 +945,10 @@ export const AppProvider = ({ children }) => {
         ...empresaData,
         id: generateUUID(),
         nome: nomeStr,
+        slug: cleanSlug,
         nomeProprietario: empresaData.nomeProprietario || 'Proprietário',
         whatsapp: empresaData.whatsapp || '',
         telefone: empresaData.whatsapp || '',
-        slug: nomeStr.toLowerCase().replace(/[^a-z0-9]/g, '-'),
         status: 'ativo',
         isReseller: !!empresaData.isReseller
       };
@@ -990,7 +993,7 @@ export const AppProvider = ({ children }) => {
         if (f.id === funcData.id) {
           const merged = { ...f, ...funcData, empresaId: f.empresaId || targetEmpId };
           const nomeStr = merged.nome || 'Funcionário';
-          const slug = merged.linkPublicoSlug || nomeStr.toLowerCase().replace(/[^a-z0-9]/g, '-');
+          const slug = merged.linkPublicoSlug || slugify(nomeStr);
           updatedFunc = { 
             ...merged, 
             id: ensureValidUUID(merged.id),
@@ -1003,7 +1006,7 @@ export const AppProvider = ({ children }) => {
       }));
     } else {
       const nomeStr = funcData.nome || 'Novo Funcionário';
-      const slug = funcData.linkPublicoSlug || nomeStr.toLowerCase().replace(/[^a-z0-9]/g, '-');
+      const slug = funcData.linkPublicoSlug || slugify(nomeStr);
       updatedFunc = {
         ...funcData,
         id: generateUUID(),
