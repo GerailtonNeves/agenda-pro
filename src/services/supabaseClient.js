@@ -4,9 +4,22 @@ import { createClient } from '@supabase/supabase-js';
 const HARDCODED_SUPABASE_URL = 'https://pnkrtcroxwdfksvkwxwk.supabase.co';
 const HARDCODED_SUPABASE_KEY = 'sb_publishable_ncJ-5Fad3rgMlG-kn5cR2A_at0ehJNY';
 
+// Auto-clean any legacy corrupted localStorage values on import
+try {
+  const savedUrl = localStorage.getItem('saas_supabase_url');
+  if (savedUrl && (savedUrl.includes('/rest') || savedUrl.includes('/auth') || savedUrl.includes('/project') || savedUrl.endsWith('/'))) {
+    const cleanOrigin = new URL(savedUrl.trim().startsWith('http') ? savedUrl.trim() : 'https://' + savedUrl.trim()).origin;
+    localStorage.setItem('saas_supabase_url', cleanOrigin);
+  }
+} catch (e) {
+  localStorage.setItem('saas_supabase_url', HARDCODED_SUPABASE_URL);
+}
+
 export const getSupabaseUrl = () => {
   let rawUrl = localStorage.getItem('saas_supabase_url') || HARDCODED_SUPABASE_URL;
-  if (!rawUrl) return HARDCODED_SUPABASE_URL;
+  if (!rawUrl || rawUrl.includes('/rest') || rawUrl.includes('/auth')) {
+    return HARDCODED_SUPABASE_URL;
+  }
   
   rawUrl = rawUrl.trim();
   if (!rawUrl.startsWith('http://') && !rawUrl.startsWith('https://')) {
@@ -15,7 +28,6 @@ export const getSupabaseUrl = () => {
 
   try {
     const parsed = new URL(rawUrl);
-    // Return strictly the origin (e.g. https://pnkrtcroxwdfksvkwxwk.supabase.co) without path or trailing slashes
     return parsed.origin;
   } catch (e) {
     return HARDCODED_SUPABASE_URL;
