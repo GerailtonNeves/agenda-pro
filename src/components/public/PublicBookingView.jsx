@@ -19,11 +19,23 @@ import {
   MoveHorizontal
 } from 'lucide-react';
 
+const slugify = (str) => {
+  if (!str) return '';
+  return str
+    .toString()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9 -]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+};
+
 export const PublicBookingView = () => {
   const { 
     empresas, 
     activeEmpresa,
-    activeEmpresaId,
     todosFuncionarios, 
     todosServicos,
     addAgendamento, 
@@ -34,11 +46,12 @@ export const PublicBookingView = () => {
     userRole
   } = useApp();
 
-  // Find professional matching slug across ALL employees
+  // Find professional matching slug across ALL employees (with robust diacritic-insensitive slugify)
   const targetFunc = publicEmployeeSlug
     ? (todosFuncionarios || []).find(f => 
-        f.linkPublicoSlug === publicEmployeeSlug || 
-        (f.nome && f.nome.toLowerCase().replace(/[^a-z0-9]/g, '-') === publicEmployeeSlug)
+        slugify(f.linkPublicoSlug) === slugify(publicEmployeeSlug) || 
+        slugify(f.nome) === slugify(publicEmployeeSlug) ||
+        f.id === publicEmployeeSlug
       )
     : null;
 
@@ -47,11 +60,18 @@ export const PublicBookingView = () => {
     ? empresas.find(e => e.id === targetFunc.empresaId) || activeEmpresa 
     : (publicBookingSlug ? empresas.find(e => e.slug === publicBookingSlug) || activeEmpresa : activeEmpresa)) || empresas[0];
 
-  // STRICT REAL DATA FILTERING: Show ONLY professionals and services registered for THIS company
-  const staff = (todosFuncionarios || []).filter(f => f.empresaId === empresa.id);
-  const displayServicos = (todosServicos || []).filter(s => s.empresaId === empresa.id);
+  // ROBUST REAL DATA FILTERING WITH FALLBACK: Ensure services and staff are NEVER hidden
+  let staff = (todosFuncionarios || []).filter(f => !f.empresaId || f.empresaId === empresa.id);
+  if (staff.length === 0 && (todosFuncionarios || []).length > 0) {
+    staff = todosFuncionarios;
+  }
 
-  const preSelectedFunc = targetFunc || (publicEmployeeSlug ? staff.find(f => f.linkPublicoSlug === publicEmployeeSlug) : null);
+  let displayServicos = (todosServicos || []).filter(s => !s.empresaId || s.empresaId === empresa.id);
+  if (displayServicos.length === 0 && (todosServicos || []).length > 0) {
+    displayServicos = todosServicos;
+  }
+
+  const preSelectedFunc = targetFunc || (publicEmployeeSlug ? staff.find(f => slugify(f.linkPublicoSlug) === slugify(publicEmployeeSlug)) : null);
 
   const [selectedServico, setSelectedServico] = useState(null);
   const [selectedFunc, setSelectedFunc] = useState(null);
@@ -301,145 +321,155 @@ export const PublicBookingView = () => {
             {/* Step 3: Select Date & Time */}
             <div className="space-y-4">
               <h3 className="text-xl font-black text-sky-950 flex items-center gap-2 border-b border-sky-100 pb-3">
-                <CalendarIcon className="w-6 h-6 text-sky-600" /> 3. Data & Horário
+                <CalendarIcon className="w-6 h-6 text-sky-600" /> 3. Data e Horário Desejado
               </h3>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-xs font-black uppercase text-slate-700 mb-1.5">Data do Atendimento</label>
+                  <label className="block text-xs font-black uppercase text-slate-700 mb-2">Selecione a Data:</label>
                   <input
                     type="date"
-                    value={selectedDate}
                     min={new Date().toISOString().split('T')[0]}
+                    value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
-                    className="w-full p-3.5 rounded-2xl bg-slate-50 border-2 border-sky-200 text-slate-950 font-bold text-sm outline-none focus:ring-2 focus:ring-sky-500"
+                    className="w-full p-3.5 rounded-2xl border-2 border-slate-200 focus:border-sky-500 font-bold text-slate-950 bg-slate-50 focus:bg-white outline-none"
+                    required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black uppercase text-slate-700 mb-1.5">Horários Disponíveis</label>
-                  <div className="w-full overflow-x-auto touch-pan-x scrollbar-thin pb-2">
-                    <div className="grid grid-cols-5 gap-2 min-w-[320px]">
-                      {availableHours.map(h => (
-                        <button
-                          key={h}
-                          type="button"
-                          onClick={() => setSelectedHorario(h)}
-                          className={`py-2 rounded-xl text-xs font-black transition border ${
-                            selectedHorario === h 
-                              ? 'bg-sky-600 text-white border-sky-600 shadow-md scale-105' 
-                              : 'bg-slate-50 text-slate-800 border-slate-200 hover:border-sky-300'
-                          }`}
-                        >
-                          {h}
-                        </button>
-                      ))}
-                    </div>
+                  <label className="block text-xs font-black uppercase text-slate-700 mb-2">Horários Disponíveis:</label>
+                  <div className="grid grid-cols-5 gap-2">
+                    {availableHours.map(h => (
+                      <button
+                        type="button"
+                        key={h}
+                        onClick={() => setSelectedHorario(h)}
+                        className={`py-2 px-1 rounded-xl text-xs font-black transition border-2 ${
+                          selectedHorario === h 
+                            ? 'bg-sky-600 text-white border-sky-600 shadow-md' 
+                            : 'bg-slate-50 text-slate-800 border-slate-200 hover:border-sky-300'
+                        }`}
+                      >
+                        {h}
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Step 4: Client Identification */}
+            {/* Step 4: Client Info */}
             <div className="space-y-4">
               <h3 className="text-xl font-black text-sky-950 flex items-center gap-2 border-b border-sky-100 pb-3">
-                <Globe className="w-6 h-6 text-sky-600" /> 4. Seus Dados de Contato
+                <MessageSquare className="w-6 h-6 text-sky-600" /> 4. Seus Dados de Contato
               </h3>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-black uppercase text-slate-700 mb-1.5">Seu Nome Completo *</label>
+                  <label className="block text-xs font-black uppercase text-slate-700 mb-1">Seu Nome Completo *</label>
                   <input
                     type="text"
                     required
                     placeholder="Digite seu nome"
                     value={clienteNome}
                     onChange={(e) => setClienteNome(e.target.value)}
-                    className="w-full p-3.5 rounded-2xl bg-slate-50 border-2 border-sky-200 text-slate-950 font-bold text-sm outline-none focus:ring-2 focus:ring-sky-500"
+                    className="w-full p-3.5 rounded-2xl border-2 border-slate-200 focus:border-sky-500 font-bold text-slate-950 bg-slate-50 focus:bg-white outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black uppercase text-slate-700 mb-1.5">Seu WhatsApp *</label>
+                  <label className="block text-xs font-black uppercase text-slate-700 mb-1">WhatsApp / Telefone *</label>
                   <input
-                    type="text"
+                    type="tel"
                     required
-                    placeholder="(11) 99999-8888"
+                    placeholder="(11) 99999-9999"
                     value={clienteTelefone}
                     onChange={(e) => setClienteTelefone(e.target.value)}
-                    className="w-full p-3.5 rounded-2xl bg-slate-50 border-2 border-sky-200 text-slate-950 font-bold text-sm outline-none focus:ring-2 focus:ring-sky-500"
+                    className="w-full p-3.5 rounded-2xl border-2 border-slate-200 focus:border-sky-500 font-bold text-slate-950 bg-slate-50 focus:bg-white outline-none"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-black uppercase text-slate-700 mb-1.5">Observações Adicionais (Opcional)</label>
-                <input
-                  type="text"
-                  placeholder="Ex: Prefiro atendimento silencioso, alergia..."
+                <label className="block text-xs font-black uppercase text-slate-700 mb-1">Observações Especiais (Opcional)</label>
+                <textarea
+                  rows="2"
+                  placeholder="Ex: Prefiro atendimento silencioso, alergia a produtos, etc."
                   value={observacoes}
                   onChange={(e) => setObservacoes(e.target.value)}
-                  className="w-full p-3.5 rounded-2xl bg-slate-50 border-2 border-sky-200 text-slate-950 font-bold text-sm outline-none focus:ring-2 focus:ring-sky-500"
+                  className="w-full p-3.5 rounded-2xl border-2 border-slate-200 focus:border-sky-500 font-bold text-slate-950 bg-slate-50 focus:bg-white outline-none"
                 />
               </div>
             </div>
 
-            {/* Confirm Button */}
-            <button
-              type="submit"
-              disabled={displayServicos.length === 0 || staff.length === 0}
-              className="w-full py-4 px-6 bg-gradient-to-r from-sky-600 via-cyan-600 to-blue-600 hover:from-sky-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black text-base md:text-lg rounded-2xl shadow-xl transition transform hover:scale-[1.01] uppercase tracking-wider flex items-center justify-center gap-2"
-            >
-              <CheckCircle2 className="w-6 h-6 text-white" /> Confirmar Agendamento Agora
-            </button>
+            {/* Final Confirmation Button */}
+            <div className="pt-4 border-t border-sky-100">
+              <button
+                type="submit"
+                className="w-full py-5 rounded-2xl bg-gradient-to-r from-sky-600 via-cyan-600 to-blue-600 hover:from-sky-700 hover:to-blue-700 text-white font-black text-lg shadow-xl shadow-sky-500/25 transition flex items-center justify-center gap-3 group uppercase tracking-wider"
+              >
+                <CheckCircle2 className="w-6 h-6 text-white group-hover:scale-110 transition" />
+                <span>Confirmar Agendamento Online</span>
+              </button>
+            </div>
           </form>
         ) : (
-          /* Confirmation Success Screen */
-          <div className="bg-white rounded-3xl p-8 border-2 border-emerald-500 text-center space-y-6 animate-scaleUp shadow-2xl text-slate-950">
-            <div className="w-20 h-20 rounded-full bg-emerald-100 text-emerald-600 border-2 border-emerald-500 flex items-center justify-center mx-auto shadow-lg">
-              <CheckCircle2 className="w-12 h-12" />
+          /* SUCCESSFUL BOOKING CARD */
+          <div className="bg-white rounded-3xl p-8 border-2 border-emerald-400 shadow-2xl text-center space-y-6 animate-scaleUp">
+            <div className="w-20 h-20 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto border-4 border-emerald-200">
+              <CheckCircle2 className="w-10 h-10" />
             </div>
 
             <div className="space-y-2">
-              <span className="px-3 py-1 bg-emerald-500 text-white rounded-full text-xs font-black uppercase">
-                Agendamento Confirmado!
+              <span className="px-4 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 uppercase tracking-wider">
+                🎉 Agendamento Realizado com Sucesso!
               </span>
-              <h2 className="text-3xl font-black text-slate-950">Obrigado, {confirmedBooking.clienteNome}!</h2>
+              <h2 className="text-3xl font-black text-slate-950">Tudo Pronto, {confirmedBooking.clienteNome}!</h2>
               <p className="text-sm text-slate-600 font-medium max-w-md mx-auto">
-                Seu agendamento foi registrado com sucesso na empresa <b className="text-sky-800">{empresa.nome}</b> com o profissional <b className="text-sky-800">{confirmedBooking.funcionarioNome}</b>.
+                Seu horário para <b>{confirmedBooking.servicoNome}</b> com <b>{confirmedBooking.funcionarioNome}</b> foi registrado no sistema.
               </p>
             </div>
 
-            <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 max-w-md mx-auto text-left space-y-2 text-xs font-bold text-slate-700">
-              <div className="flex justify-between border-b border-slate-200 pb-2">
-                <span>Empresa:</span>
+            <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 text-left max-w-md mx-auto space-y-3 font-bold text-slate-800 text-sm">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                <span className="text-slate-500">Empresa:</span>
                 <span className="text-slate-950 font-black">{empresa.nome}</span>
               </div>
-              <div className="flex justify-between border-b border-slate-200 pb-2">
-                <span>Serviço:</span>
-                <span className="text-slate-950 font-black">{confirmedBooking.servicoNome}</span>
-              </div>
-              <div className="flex justify-between border-b border-slate-200 pb-2">
-                <span>Profissional:</span>
+              <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                <span className="text-slate-500">Profissional:</span>
                 <span className="text-slate-950 font-black">{confirmedBooking.funcionarioNome}</span>
               </div>
-              <div className="flex justify-between border-b border-slate-200 pb-2">
-                <span>Data & Horário:</span>
-                <span className="text-emerald-700 font-black">{confirmedBooking.data} às {confirmedBooking.horario}</span>
+              <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                <span className="text-slate-500">Serviço:</span>
+                <span className="text-slate-950 font-black">{confirmedBooking.servicoNome}</span>
               </div>
-              <div className="flex justify-between pt-1 text-sm font-black">
-                <span>Valor Total:</span>
-                <span className="text-sky-700">R$ {confirmedBooking.valor.toFixed(2)}</span>
+              <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                <span className="text-slate-500">Data e Horário:</span>
+                <span className="text-sky-700 font-black">{confirmedBooking.data} às {confirmedBooking.horario}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">Valor Total:</span>
+                <span className="text-emerald-600 font-black text-lg">R$ {confirmedBooking.valor.toFixed(2)}</span>
               </div>
             </div>
 
-            <div className="pt-2 flex flex-col sm:flex-row gap-3 justify-center max-w-md mx-auto">
+            <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
               <button
                 onClick={() => setConfirmedBooking(null)}
-                className="py-3.5 px-6 rounded-2xl bg-sky-600 hover:bg-sky-700 text-white font-black text-xs transition shadow-md"
+                className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-sm transition"
               >
                 Fazer Novo Agendamento
               </button>
+
+              {(empresa.whatsapp || empresa.telefone) && (
+                <button
+                  onClick={() => openWhatsappModal(empresa.whatsapp || empresa.telefone, empresa.nome, `Olá! Fiz um agendamento online de ${confirmedBooking.servicoNome} para o dia ${confirmedBooking.data} às ${confirmedBooking.horario}.`)}
+                  className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-sm transition flex items-center justify-center gap-2 shadow-md"
+                >
+                  <MessageSquare className="w-4 h-4" /> Enviar Mensagem no WhatsApp
+                </button>
+              )}
             </div>
           </div>
         )}
