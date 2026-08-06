@@ -16,7 +16,8 @@ import {
   ChevronRight,
   MessageSquare,
   Star,
-  MoveHorizontal
+  MoveHorizontal,
+  RefreshCw
 } from 'lucide-react';
 
 const slugify = (str) => {
@@ -43,8 +44,29 @@ export const PublicBookingView = () => {
     publicEmployeeSlug, 
     setCurrentView,
     openWhatsappModal,
-    userRole
+    userRole,
+    fetchAllFromSupabase
   } = useApp();
+
+  const [loadingCloud, setLoadingCloud] = useState(true);
+
+  // FORCE CLOUD FETCH ON PUBLIC PAGE MOUNT FOR 100% FRESH SERVICES & STAFF
+  useEffect(() => {
+    let isMounted = true;
+    const syncData = async () => {
+      try {
+        if (fetchAllFromSupabase) {
+          await fetchAllFromSupabase();
+        }
+      } catch (e) {
+        console.warn('Cloud sync error on public page mount:', e);
+      } finally {
+        if (isMounted) setLoadingCloud(false);
+      }
+    };
+    syncData();
+    return () => { isMounted = false; };
+  }, []);
 
   // Find professional matching slug across ALL employees (with robust diacritic-insensitive slugify)
   const targetFunc = publicEmployeeSlug
@@ -252,10 +274,14 @@ export const PublicBookingView = () => {
                 </div>
               ) : (
                 <div className="p-8 rounded-3xl bg-sky-50/50 border-2 border-dashed border-sky-200 text-center space-y-2">
-                  <Scissors className="w-8 h-8 text-sky-400 mx-auto" />
-                  <h4 className="text-base font-black text-sky-950">Nenhum Serviço Cadastrado</h4>
+                  <Scissors className="w-8 h-8 text-sky-400 mx-auto animate-bounce" />
+                  <h4 className="text-base font-black text-sky-950">
+                    {loadingCloud ? 'Carregando serviços da nuvem...' : 'Nenhum Serviço Cadastrado'}
+                  </h4>
                   <p className="text-xs text-slate-600 max-w-sm mx-auto font-medium">
-                    Esta empresa ainda não cadastrou os seus serviços. Acesse o <b>Painel Admin ➔ Serviços</b> para adicionar seus valores!
+                    {loadingCloud 
+                      ? 'Conectando ao banco de dados Supabase...' 
+                      : 'Esta empresa ainda não cadastrou os seus serviços. Acesse o Painel Admin ➔ Serviços para adicionar seus valores!'}
                   </p>
                 </div>
               )}
