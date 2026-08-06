@@ -31,7 +31,22 @@ export const AppProvider = ({ children }) => {
         return crypto.randomUUID();
       }
     } catch (e) {}
-    return 'u' + Date.now() + Math.random().toString(36).substring(2, 9);
+    // Standard RFC4122 v4 UUID fallback generator
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  };
+
+  const ensureValidUUID = (idStr) => {
+    if (!idStr) return '11111111-1111-1111-1111-111111111111';
+    if (typeof idStr === 'string' && idStr.length === 36 && idStr.includes('-')) {
+      return idStr;
+    }
+    if (idStr === 'emp-1' || idStr === 'emp-barbearia-luxo' || idStr === 'minha-empresa') {
+      return '11111111-1111-1111-1111-111111111111';
+    }
+    return generateUUID();
   };
 
   const loadStored = (key, fallback) => {
@@ -146,12 +161,25 @@ export const AppProvider = ({ children }) => {
     if (!client) return;
 
     try {
+      // 0. Ensure active empresa exists in Supabase to avoid FK constraint failures
+      const currentEmpObj = (empresas && empresas.length > 0 ? empresas[0] : initialEmpresas[0]);
+      const empUuid = ensureValidUUID(currentEmpObj.id);
+
+      await client.from('empresas').upsert({
+        id: empUuid,
+        slug: currentEmpObj.slug || 'minha-empresa',
+        nome: currentEmpObj.nome || 'Minha Empresa',
+        whatsapp: currentEmpObj.whatsapp || '',
+        telefone: currentEmpObj.telefone || '',
+        email: currentEmpObj.email || ''
+      }).catch(e => console.warn('Supabase empresa setup err:', e));
+
       // 1. Fetch Servicos
       const { data: dbServicos } = await client.from('servicos').select('*');
       if (dbServicos && Array.isArray(dbServicos)) {
         const mappedServicos = dbServicos.map(s => ({
           id: s.id,
-          empresaId: s.empresa_id || activeEmpresaId,
+          empresaId: s.empresa_id || empUuid,
           nome: s.nome,
           foto: s.foto || '',
           categoria: s.categoria || 'Geral',
@@ -168,7 +196,7 @@ export const AppProvider = ({ children }) => {
       if (dbFuncs && Array.isArray(dbFuncs)) {
         const mappedFuncs = dbFuncs.map(f => ({
           id: f.id,
-          empresaId: f.empresa_id || activeEmpresaId,
+          empresaId: f.empresa_id || empUuid,
           nome: f.nome,
           foto: f.foto || '',
           cargo: f.cargo || 'Profissional',
@@ -187,7 +215,7 @@ export const AppProvider = ({ children }) => {
       if (dbClientes && Array.isArray(dbClientes)) {
         const mappedClientes = dbClientes.map(c => ({
           id: c.id,
-          empresaId: c.empresa_id || activeEmpresaId,
+          empresaId: c.empresa_id || empUuid,
           nome: c.nome,
           telefone: c.telefone || '',
           whatsapp: c.whatsapp || c.telefone || '',
@@ -204,7 +232,7 @@ export const AppProvider = ({ children }) => {
       if (dbAges && Array.isArray(dbAges)) {
         const mappedAges = dbAges.map(a => ({
           id: a.id,
-          empresaId: a.empresa_id || activeEmpresaId,
+          empresaId: a.empresa_id || empUuid,
           clienteId: a.cliente_id,
           funcionarioId: a.funcionario_id,
           servicoId: a.servico_id,
@@ -830,7 +858,7 @@ export const AppProvider = ({ children }) => {
     };
   };
 
-  // GENERAL MUTATORS WITH SUPABASE CLOUD SYNC
+  // GENERAL MUTATORS WITH SUPABASE CLOUD SYNC & UUID VALIDATION
 
   const saveEmpresa = async (empresaData) => {
     if (!empresaData) return;
@@ -839,7 +867,7 @@ export const AppProvider = ({ children }) => {
     if (empresaData.id) {
       setEmpresas(prev => prev.map(e => {
         if (e.id === empresaData.id) {
-          updatedEmp = { ...e, ...empresaData };
+          updatedEmp = { ...e, ...empresaData, id: ensureValidUUID(e.id) };
           return updatedEmp;
         }
         return e;
@@ -866,7 +894,7 @@ export const AppProvider = ({ children }) => {
       const client = getSupabaseClient();
       if (client) {
         client.from('empresas').upsert({
-          id: updatedEmp.id.includes('-') && updatedEmp.id.length > 30 ? updatedEmp.id : undefined,
+          id: ensureValidUUID(updatedEmp.id),
           slug: updatedEmp.slug,
           nome: updatedEmp.nome,
           whatsapp: updatedEmp.whatsapp,
@@ -876,14 +904,17 @@ export const AppProvider = ({ children }) => {
           cidade: updatedEmp.cidade,
           estado: updatedEmp.estado,
           descricao: updatedEmp.descricao
-        }).catch(e => console.warn('Supabase empresa upsert err:', e));
+        }).then(({ error }) => {
+          if (error) console.error('❌ Supabase empresa upsert err:', error);
+          else console.log('✅ Supabase empresa saved successfully');
+        });
       }
     }
   };
 
   const saveFuncionario = async (funcData) => {
     if (!funcData) return;
-    const targetEmpId = funcData.empresaId || activeEmpresa.id;
+    const targetEmpId = ensureValidUUID(funcData.empresaId || activeEmpresa.id);
     let updatedFunc = null;
 
     if (funcData.id) {
@@ -894,6 +925,7 @@ export const AppProvider = ({ children }) => {
           const slug = merged.linkPublicoSlug || nomeStr.toLowerCase().replace(/[^a-z0-9]/g, '-');
           updatedFunc = { 
             ...merged, 
+            id: ensureValidUUID(merged.id),
             linkPublicoSlug: slug, 
             comissaoPct: funcData.comissaoPct !== undefined ? Number(funcData.comissaoPct) : (f.comissaoPct || 0) 
           };
@@ -923,8 +955,8 @@ export const AppProvider = ({ children }) => {
       const client = getSupabaseClient();
       if (client) {
         client.from('funcionarios').upsert({
-          id: updatedFunc.id.includes('-') && updatedFunc.id.length > 30 ? updatedFunc.id : undefined,
-          empresa_id: updatedFunc.empresaId,
+          id: ensureValidUUID(updatedFunc.id),
+          empresa_id: targetEmpId,
           nome: updatedFunc.nome,
           foto: updatedFunc.foto,
           cargo: updatedFunc.cargo,
@@ -934,7 +966,10 @@ export const AppProvider = ({ children }) => {
           comissao_pct: updatedFunc.comissaoPct,
           link_publico_slug: updatedFunc.linkPublicoSlug,
           status: updatedFunc.status
-        }).catch(e => console.warn('Supabase funcionario upsert err:', e));
+        }).then(({ error }) => {
+          if (error) console.error('❌ Supabase funcionario upsert err:', error);
+          else console.log('✅ Supabase funcionario saved successfully');
+        });
       }
     }
 
@@ -942,24 +977,25 @@ export const AppProvider = ({ children }) => {
   };
 
   const deleteFuncionario = async (id) => {
-    setFuncionarios(prev => prev.filter(f => f.id !== id));
+    const validId = ensureValidUUID(id);
+    setFuncionarios(prev => prev.filter(f => f.id !== id && f.id !== validId));
     if (isSupabaseConfigured()) {
       const client = getSupabaseClient();
       if (client) {
-        client.from('funcionarios').delete().eq('id', id).catch(e => console.warn('Supabase delete func err:', e));
+        client.from('funcionarios').delete().eq('id', validId).catch(e => console.warn('Supabase delete func err:', e));
       }
     }
   };
 
   const saveServico = async (servData) => {
     if (!servData) return;
-    const targetEmpId = servData.empresaId || activeEmpresa.id;
+    const targetEmpId = ensureValidUUID(servData.empresaId || activeEmpresa.id);
     let updatedServ = null;
 
     if (servData.id) {
       setServicos(prev => prev.map(s => {
         if (s.id === servData.id) {
-          updatedServ = { ...s, ...servData, empresaId: s.empresaId || targetEmpId };
+          updatedServ = { ...s, ...servData, id: ensureValidUUID(s.id), empresaId: targetEmpId };
           return updatedServ;
         }
         return s;
@@ -981,17 +1017,25 @@ export const AppProvider = ({ children }) => {
     if (isSupabaseConfigured() && updatedServ) {
       const client = getSupabaseClient();
       if (client) {
-        client.from('servicos').upsert({
-          id: updatedServ.id.includes('-') && updatedServ.id.length > 30 ? updatedServ.id : undefined,
-          empresa_id: updatedServ.empresaId,
+        const payload = {
+          id: ensureValidUUID(updatedServ.id),
+          empresa_id: targetEmpId,
           nome: updatedServ.nome,
-          preco: updatedServ.preco,
-          duracao_minutos: updatedServ.duracaoMinutos,
-          categoria: updatedServ.categoria,
-          descricao: updatedServ.descricao,
-          foto: updatedServ.foto,
-          ativo: updatedServ.ativo
-        }).catch(e => console.warn('Supabase servico upsert err:', e));
+          preco: Number(updatedServ.preco || 0),
+          duracao_minutos: Number(updatedServ.duracaoMinutos || 30),
+          categoria: updatedServ.categoria || 'Geral',
+          descricao: updatedServ.descricao || '',
+          foto: updatedServ.foto || '',
+          ativo: updatedServ.ativo !== false
+        };
+
+        client.from('servicos').upsert(payload).then(({ error }) => {
+          if (error) {
+            console.error('❌ Error saving service to Supabase:', error);
+          } else {
+            console.log('✅ Service saved successfully to Supabase cloud:', payload);
+          }
+        });
       }
     }
 
@@ -999,18 +1043,19 @@ export const AppProvider = ({ children }) => {
   };
 
   const deleteServico = async (id) => {
-    setServicos(prev => prev.filter(s => s.id !== id));
+    const validId = ensureValidUUID(id);
+    setServicos(prev => prev.filter(s => s.id !== id && s.id !== validId));
     if (isSupabaseConfigured()) {
       const client = getSupabaseClient();
       if (client) {
-        client.from('servicos').delete().eq('id', id).catch(e => console.warn('Supabase delete servico err:', e));
+        client.from('servicos').delete().eq('id', validId).catch(e => console.warn('Supabase delete servico err:', e));
       }
     }
   };
 
   const saveProduto = async (prodData) => {
     if (!prodData) return;
-    const targetEmpId = prodData.empresaId || activeEmpresa.id;
+    const targetEmpId = ensureValidUUID(prodData.empresaId || activeEmpresa.id);
     const precoCusto = Number(prodData.precoCusto) || 0;
     const precoVenda = Number(prodData.precoVenda) || 0;
     const lucro = precoVenda - precoCusto;
@@ -1019,7 +1064,7 @@ export const AppProvider = ({ children }) => {
     if (prodData.id) {
       setProdutos(prev => prev.map(p => {
         if (p.id === prodData.id) {
-          updatedProd = { ...p, ...prodData, empresaId: p.empresaId || targetEmpId, precoCusto, precoVenda, lucro };
+          updatedProd = { ...p, ...prodData, id: ensureValidUUID(p.id), empresaId: targetEmpId, precoCusto, precoVenda, lucro };
           return updatedProd;
         }
         return p;
@@ -1040,14 +1085,17 @@ export const AppProvider = ({ children }) => {
       const client = getSupabaseClient();
       if (client) {
         client.from('produtos').upsert({
-          id: updatedProd.id.includes('-') && updatedProd.id.length > 30 ? updatedProd.id : undefined,
-          empresa_id: updatedProd.empresaId,
+          id: ensureValidUUID(updatedProd.id),
+          empresa_id: targetEmpId,
           nome: updatedProd.nome,
           preco_venda: updatedProd.precoVenda,
           preco_custo: updatedProd.precoCusto,
           estoque: updatedProd.estoque || 0,
           categoria: updatedProd.categoria
-        }).catch(e => console.warn('Supabase produto upsert err:', e));
+        }).then(({ error }) => {
+          if (error) console.error('❌ Supabase produto upsert err:', error);
+          else console.log('✅ Supabase produto saved successfully');
+        });
       }
     }
 
@@ -1055,24 +1103,25 @@ export const AppProvider = ({ children }) => {
   };
 
   const deleteProduto = async (id) => {
-    setProdutos(prev => prev.filter(p => p.id !== id));
+    const validId = ensureValidUUID(id);
+    setProdutos(prev => prev.filter(p => p.id !== id && p.id !== validId));
     if (isSupabaseConfigured()) {
       const client = getSupabaseClient();
       if (client) {
-        client.from('produtos').delete().eq('id', id).catch(e => console.warn('Supabase delete produto err:', e));
+        client.from('produtos').delete().eq('id', validId).catch(e => console.warn('Supabase delete produto err:', e));
       }
     }
   };
 
   const saveCliente = async (cliData) => {
     if (!cliData) return;
-    const targetEmpId = cliData.empresaId || activeEmpresa.id;
+    const targetEmpId = ensureValidUUID(cliData.empresaId || activeEmpresa.id);
     let updatedCli = null;
     
     if (cliData.id) {
       setClientes(prev => prev.map(c => {
         if (c.id === cliData.id) {
-          updatedCli = { ...c, ...cliData, empresaId: c.empresaId || targetEmpId };
+          updatedCli = { ...c, ...cliData, id: ensureValidUUID(c.id), empresaId: targetEmpId };
           return updatedCli;
         }
         return c;
@@ -1094,8 +1143,8 @@ export const AppProvider = ({ children }) => {
       const client = getSupabaseClient();
       if (client) {
         client.from('clientes').upsert({
-          id: updatedCli.id.includes('-') && updatedCli.id.length > 30 ? updatedCli.id : undefined,
-          empresa_id: updatedCli.empresaId,
+          id: ensureValidUUID(updatedCli.id),
+          empresa_id: targetEmpId,
           nome: updatedCli.nome,
           telefone: updatedCli.telefone,
           whatsapp: updatedCli.whatsapp,
@@ -1103,7 +1152,10 @@ export const AppProvider = ({ children }) => {
           cpf: updatedCli.cpf,
           endereco: updatedCli.endereco,
           observacoes: updatedCli.observacoes
-        }).catch(e => console.warn('Supabase cliente upsert err:', e));
+        }).then(({ error }) => {
+          if (error) console.error('❌ Supabase cliente upsert err:', error);
+          else console.log('✅ Supabase cliente saved successfully');
+        });
       }
     }
 
@@ -1111,30 +1163,31 @@ export const AppProvider = ({ children }) => {
   };
 
   const deleteCliente = async (id) => {
-    setClientes(prev => prev.filter(c => c.id !== id));
+    const validId = ensureValidUUID(id);
+    setClientes(prev => prev.filter(c => c.id !== id && c.id !== validId));
     if (isSupabaseConfigured()) {
       const client = getSupabaseClient();
       if (client) {
-        client.from('clientes').delete().eq('id', id).catch(e => console.warn('Supabase delete cliente err:', e));
+        client.from('clientes').delete().eq('id', validId).catch(e => console.warn('Supabase delete cliente err:', e));
       }
     }
   };
 
   const addAgendamento = async (agendData) => {
-    const targetEmpId = agendData.empresaId || activeEmpresa.id;
+    const targetEmpId = ensureValidUUID(agendData.empresaId || activeEmpresa.id);
     const funcionarioObj = funcionarios.find(f => f.id === agendData.funcionarioId);
     const servicoObj = servicos.find(s => s.id === agendData.servicoId);
     
     const newAge = {
       id: generateUUID(),
       empresaId: targetEmpId,
-      clienteId: agendData.clienteId || null,
+      clienteId: agendData.clienteId ? ensureValidUUID(agendData.clienteId) : null,
       clienteNome: agendData.clienteNome || 'Cliente',
       clienteTelefone: agendData.clienteTelefone || '',
       clienteWhatsapp: agendData.clienteWhatsapp || '',
-      funcionarioId: agendData.funcionarioId,
+      funcionarioId: ensureValidUUID(agendData.funcionarioId),
       funcionarioNome: funcionarioObj ? funcionarioObj.nome : agendData.funcionarioNome,
-      servicoId: agendData.servicoId,
+      servicoId: ensureValidUUID(agendData.servicoId),
       servicoNome: servicoObj ? servicoObj.nome : agendData.servicoNome,
       data: agendData.data,
       horario: agendData.horario,
@@ -1153,11 +1206,11 @@ export const AppProvider = ({ children }) => {
       const client = getSupabaseClient();
       if (client) {
         client.from('agendamentos').upsert({
-          id: newAge.id.includes('-') && newAge.id.length > 30 ? newAge.id : undefined,
-          empresa_id: newAge.empresaId,
-          cliente_id: newAge.clienteId && newAge.clienteId.includes('-') ? newAge.clienteId : undefined,
-          funcionario_id: newAge.funcionarioId && newAge.funcionarioId.includes('-') ? newAge.funcionarioId : undefined,
-          servico_id: newAge.servicoId && newAge.servicoId.includes('-') ? newAge.servicoId : undefined,
+          id: ensureValidUUID(newAge.id),
+          empresa_id: targetEmpId,
+          cliente_id: newAge.clienteId,
+          funcionario_id: newAge.funcionarioId,
+          servico_id: newAge.servicoId,
           cliente_nome: newAge.clienteNome,
           cliente_telefone: newAge.clienteTelefone,
           cliente_whatsapp: newAge.clienteWhatsapp,
@@ -1168,7 +1221,10 @@ export const AppProvider = ({ children }) => {
           status: newAge.status,
           cor_status: newAge.corStatus,
           observacoes: newAge.observacoes
-        }).catch(e => console.warn('Supabase agendamento upsert err:', e));
+        }).then(({ error }) => {
+          if (error) console.error('❌ Supabase agendamento upsert err:', error);
+          else console.log('✅ Supabase agendamento saved successfully');
+        });
       }
     }
 
@@ -1223,8 +1279,8 @@ export const AppProvider = ({ children }) => {
       const client = getSupabaseClient();
       if (client) {
         client.from('agendamentos').upsert({
-          id: updatedAge.id.includes('-') && updatedAge.id.length > 30 ? updatedAge.id : undefined,
-          empresa_id: updatedAge.empresaId,
+          id: ensureValidUUID(updatedAge.id),
+          empresa_id: ensureValidUUID(updatedAge.empresaId),
           cliente_nome: updatedAge.clienteNome,
           cliente_telefone: updatedAge.clienteTelefone,
           data: updatedAge.data,
@@ -1325,7 +1381,7 @@ export const AppProvider = ({ children }) => {
         client.from('agendamentos').update({
           status: newStatus,
           cor_status: colorMap[newStatus] || '#0284c7'
-        }).eq('id', id).catch(e => console.warn('Supabase status update err:', e));
+        }).eq('id', ensureValidUUID(id)).catch(e => console.warn('Supabase status update err:', e));
       }
     }
 
@@ -1350,18 +1406,19 @@ export const AppProvider = ({ children }) => {
   };
 
   const deleteAgendamento = async (id) => {
-    setAgendamentos(prev => prev.filter(a => a.id !== id));
+    const validId = ensureValidUUID(id);
+    setAgendamentos(prev => prev.filter(a => a.id !== id && a.id !== validId));
     if (isSupabaseConfigured()) {
       const client = getSupabaseClient();
       if (client) {
-        client.from('agendamentos').delete().eq('id', id).catch(e => console.warn('Supabase delete age err:', e));
+        client.from('agendamentos').delete().eq('id', validId).catch(e => console.warn('Supabase delete age err:', e));
       }
     }
   };
 
   const saveFinanceiroItem = (itemData) => {
     if (!itemData) return;
-    const targetEmpId = itemData.empresaId || activeEmpresa.id;
+    const targetEmpId = ensureValidUUID(itemData.empresaId || activeEmpresa.id);
     if (itemData.id) {
       setFinanceiro(prev => prev.map(f => f.id === itemData.id ? { ...f, ...itemData, empresaId: f.empresaId || targetEmpId } : f));
     } else {
@@ -1418,7 +1475,7 @@ export const AppProvider = ({ children }) => {
 
   const saveLembrete = (lembData) => {
     if (!lembData) return;
-    const targetEmpId = lembData.empresaId || activeEmpresa.id;
+    const targetEmpId = ensureValidUUID(lembData.empresaId || activeEmpresa.id);
     if (lembData.id) {
       setLembretes(prev => prev.map(l => l.id === lembData.id ? { ...l, ...lembData, empresaId: l.empresaId || targetEmpId } : l));
     } else {

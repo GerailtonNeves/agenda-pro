@@ -3,7 +3,7 @@
 
 export const initialEmpresas = [
   {
-    id: 'emp-1',
+    id: '11111111-1111-1111-1111-111111111111',
     slug: 'minha-empresa',
     nome: 'Minha Empresa',
     nomeProprietario: 'Proprietário',
@@ -54,52 +54,45 @@ export const initialLicencas = [
   {
     id: 'lic-master-initial',
     codigoAtivacao: 'AGY-MASTER-RECOVERY-2026',
-    empresaId: 'emp-1',
+    empresaId: '11111111-1111-1111-1111-111111111111',
     empresaNome: 'Minha Empresa',
     duracao: '1_ANO',
     plano: 'ANUAL',
     status: 'ATIVO',
     dataExpiracaoIso: '2030-12-31T23:59:59.000Z',
     dataExpiracao: '2030-12-31',
-    dispositivoVinculadoId: null,
-    criadoEm: new Date().toISOString()
+    dispositivoVinculadoId: null
   }
 ];
 
 export const defaultWhatsappTemplates = [
   {
     id: 'tpl-1',
-    titulo: 'Confirmação de Agendamento',
-    gatilho: 'agendado',
-    mensagem: 'Olá *{CLIENTE_NOME}*! 👋 Confirmamos seu agendamento de *{SERVICO_NOME}* com *{PROFISSIONAL_NOME}* para dia *{DATA} às {HORARIO}*.\n\nPor favor, deixe seu OK para confirmar!'
+    titulo: 'Lembrete 2 Horas Antes',
+    gatilho: 'lembrete_2h',
+    mensagem: 'Olá {cliente}! 👋 Lembrando do seu agendamento hoje às {horario} para {servico} com {profissional} na {empresa}. Confirma sua presença?'
   },
   {
     id: 'tpl-2',
-    titulo: 'Lembrete de Horário',
-    gatilho: 'lembrete',
-    mensagem: 'Olá *{CLIENTE_NOME}*! ⏰ Lembramos do seu horário marcado hoje às *{HORARIO}* para *{SERVICO_NOME}* na empresa *{EMPRESA_NOME}*. Estamos te aguardando!'
-  },
-  {
-    id: 'tpl-3',
-    titulo: 'Agradecimento Pós-Atendimento',
-    gatilho: 'concluido',
-    mensagem: 'Olá *{CLIENTE_NOME}*! 🎉 Seu atendimento foi concluído com sucesso. Agradecemos muito pela preferência e até a próxima!'
+    titulo: 'Confirmação de Agendamento',
+    gatilho: 'novo_agendamento',
+    mensagem: 'Olá {cliente}! 🎉 Seu agendamento de {servico} para dia {data} às {horario} com {profissional} foi realizado com sucesso!'
   }
 ];
 
 export const saasPlanos = [
   {
     id: 'plano-mensal',
-    nome: 'Plano Mensal',
-    preco: 97.00,
-    periodo: 'mês',
-    recursos: ['Agendamentos Ilimitados', 'Equipe Sem Limites', 'WhatsApp Direto', 'Controle Financeiro Completo']
+    nome: 'Plano Mensal Pro',
+    preco: 99.90,
+    duracao: '1_MES',
+    recursos: ['Agendamentos Ilimitados', 'Página de Link 1 e Link 2', 'WhatsApp Automático', 'Multi-Profissional']
   },
   {
     id: 'plano-anual',
-    nome: 'Plano Anual (Recomendado)',
-    preco: 797.00,
-    periodo: 'ano',
-    recursos: ['Economia de 30%', 'Agendamentos Ilimitados', 'Equipe Sem Limites', 'Recibos & Orçamentos', 'Suporte Prioritário VIP']
+    nome: 'Plano Anual Master',
+    preco: 899.00,
+    duracao: '1_ANO',
+    recursos: ['Economia de 25%', 'Suporte VIP 24h', 'Todas as Funcionalidades Pro', 'Domínio Personalizado']
   }
 ];
